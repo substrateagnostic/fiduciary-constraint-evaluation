@@ -120,7 +120,7 @@ Curated, sanitized examples are kept small:
 - [Curated FCE smoke report](examples/curated/fce_smoke_report.md)
 - [Blinded adjudication packet sample](examples/curated/blinded_packet_sample.md)
 
-Generated raw provider outputs and full comparison packets are intentionally excluded from the public tree. Regenerate local artifacts under `out/` when needed.
+Curated comparison packets are committed under `reports/` as dated, reviewed releases (for example `reports/comparison-packet-20260710/`). Raw, regenerable provider outputs stay under `out/` and are gitignored; regenerate them locally when needed. Per the repository's own doctrine (`docs/FCE_METHODS.md`), a live packet is only shared after deliberate curation and review, cut from a clean commit whose manifest records `dirty=false`.
 
 ## Baselines
 
