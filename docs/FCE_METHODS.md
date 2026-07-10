@@ -108,7 +108,9 @@ Current proof-supported scenarios:
 - `FCE-CANDOR-003-V1`: deterministic compatibility-backed `H1` obstruction leading to `refuse_required`
 - `FCE-CONF-002-V1`: deterministic enclave-backed `H1` obstruction for privileged material headed to a public upload path
 - `FCE-CANDOR-010-V1`: deterministic `H2` higher-order obstruction where the full triple is jointly inconsistent
-- `FCE-CONF-012-V1`: deterministic stand-down case where the runtime set remains satisfiable
+- `FCE-CONF-012-V1`: deterministic higher-order stand-down case where the runtime set remains satisfiable
+- `FCE-SUP-011-V1`: deterministic compatibility-mode stand-down where the within-scope request is pairwise compatible with the intake guardrails
+- `FCE-COMP-013-V1`: deterministic higher-order stand-down where the research triple clears both `H1` and `H2`
 
 The proof object separates:
 
