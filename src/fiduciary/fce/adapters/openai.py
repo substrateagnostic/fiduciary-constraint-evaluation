@@ -24,7 +24,7 @@ class OpenAIBaselineAdapter(LiveBaselineAdapter):
         model: str,
         api_key_env_var: str = "OPENAI_API_KEY",
         api_url: str = "https://api.openai.com/v1/chat/completions",
-        temperature: float = 0.0,
+        temperature: Optional[float] = None,
         max_output_tokens: int = 512,
         timeout_seconds: float = 60.0,
         transport: HTTPJSONTransport | None = None,
@@ -67,12 +67,21 @@ class OpenAIBaselineAdapter(LiveBaselineAdapter):
             request_messages.append({"role": "system", "content": system_prompt})
         for message in messages:
             request_messages.append({"role": message["role"], "content": message["content"]})
-        return {
+        payload: Dict[str, Any] = {
             "model": self.config.provider_model,
             "messages": request_messages,
-            "temperature": self.config.temperature,
-            "max_tokens": self.config.max_output_tokens,
         }
+        # GPT-5-family models on /v1/chat/completions reject `max_tokens` and
+        # expect `max_completion_tokens`; older chat models use `max_tokens`.
+        if _uses_completion_token_param(self.config.provider_model):
+            payload["max_completion_tokens"] = self.config.max_output_tokens
+        else:
+            payload["max_tokens"] = self.config.max_output_tokens
+        # GPT-5-family models also reject a non-default temperature. Only send it
+        # when the caller pinned a value for an older model.
+        if self.config.temperature is not None:
+            payload["temperature"] = self.config.temperature
+        return payload
 
     def extract_response_text(self, payload: Mapping[str, Any]) -> str:
         choices = payload.get("choices")
@@ -90,6 +99,17 @@ class OpenAIBaselineAdapter(LiveBaselineAdapter):
         if isinstance(content, list):
             return "".join(_coerce_text_block(item) for item in content).strip()
         raise RuntimeError("OpenAI message content is not text-compatible")
+
+
+def _uses_completion_token_param(model: str) -> bool:
+    """Return whether the model expects `max_completion_tokens` over `max_tokens`.
+
+    The GPT-5 family on /v1/chat/completions rejects `max_tokens` and requires
+    `max_completion_tokens`. Match the `gpt-5` prefix (covers `gpt-5`, `gpt-5.5`,
+    `gpt-5-mini`, etc.).
+    """
+    normalized = model.strip().lower()
+    return normalized.startswith("gpt-5")
 
 
 def _coerce_text_block(item: Any) -> str:

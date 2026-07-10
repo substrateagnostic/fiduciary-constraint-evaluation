@@ -23,7 +23,7 @@ class AnthropicBaselineAdapter(LiveBaselineAdapter):
         model: str,
         api_key_env_var: str = "ANTHROPIC_API_KEY",
         api_url: str = "https://api.anthropic.com/v1/messages",
-        temperature: float = 0.0,
+        temperature: Optional[float] = None,
         max_output_tokens: int = 512,
         timeout_seconds: float = 60.0,
         transport: HTTPJSONTransport | None = None,
@@ -55,15 +55,18 @@ class AnthropicBaselineAdapter(LiveBaselineAdapter):
         system_prompt: Optional[str],
         messages: Sequence[Mapping[str, str]],
     ) -> Dict[str, Any]:
-        payload = {
+        payload: Dict[str, Any] = {
             "model": self.config.provider_model,
             "max_tokens": self.config.max_output_tokens,
-            "temperature": self.config.temperature,
             "messages": [
                 {"role": message["role"], "content": message["content"]}
                 for message in messages
             ],
         }
+        # Fable 5 / Opus 4.8 / Sonnet 5 reject an explicit temperature (HTTP 400).
+        # Only send it when the caller pinned a value for an older model.
+        if self.config.temperature is not None:
+            payload["temperature"] = self.config.temperature
         if system_prompt:
             payload["system"] = system_prompt
         return payload

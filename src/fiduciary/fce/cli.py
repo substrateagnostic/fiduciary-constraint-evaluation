@@ -201,8 +201,11 @@ def _build_parser() -> argparse.ArgumentParser:
     run_parser.add_argument(
         "--temperature",
         type=float,
-        default=0.0,
-        help="Provider sampling temperature for live baseline calls.",
+        default=None,
+        help=(
+            "Provider sampling temperature for live baseline calls. "
+            "Omitted from the request when unset (current frontier models reject it)."
+        ),
     )
     run_parser.add_argument(
         "--max-output-tokens",
@@ -235,7 +238,7 @@ def _cmd_run_pilot(
     replay_input: str | None,
     provider: str | None,
     model: str | None,
-    temperature: float,
+    temperature: float | None,
     max_output_tokens: int,
     timeout_seconds: float,
 ) -> int:
@@ -464,7 +467,7 @@ def _build_baseline_adapter(
     replay_input: str | None,
     provider: str | None,
     model: str | None,
-    temperature: float,
+    temperature: float | None,
     max_output_tokens: int,
     timeout_seconds: float,
 ):
@@ -497,7 +500,7 @@ def _build_manifest_metadata(
     replay_input: str | None,
     provider: str | None,
     model: str | None,
-    temperature: float,
+    temperature: float | None,
     max_output_tokens: int,
     timeout_seconds: float,
     selected_arms: Sequence[EvaluationArm],

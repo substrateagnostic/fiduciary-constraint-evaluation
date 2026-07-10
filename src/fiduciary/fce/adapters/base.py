@@ -212,7 +212,10 @@ class LiveProviderConfig(BaseModel):
     api_url: str
     timeout_seconds: float = 60.0
     max_output_tokens: int = 512
-    temperature: float = 0.0
+    # Frontier models (Fable 5, Opus 4.8, Sonnet 5, GPT-5 family) reject an
+    # explicit temperature. Default to None so adapters omit the field and the
+    # provider default is used; a caller may still pin a value on older models.
+    temperature: Optional[float] = None
     metadata: Dict[str, Any] = Field(default_factory=dict)
 
 
