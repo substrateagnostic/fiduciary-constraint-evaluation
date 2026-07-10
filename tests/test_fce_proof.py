@@ -240,6 +240,56 @@ class TestCoherentWitnessProofPath:
         assert not reverdict.valid
         assert any("runtime_case_hash mismatch" in failure for failure in reverdict.failures)
 
+    def test_forged_nonsense_facts_are_rejected(self):
+        """Finding 5 (gpt-5.6-sol): hand-built nonsense facts must not pass as a
+        valid proof. Even with a genuine envelope (matching runtime_case_hash and
+        engine_id), a witness carrying a forged schema, a "moon is cheese" fact
+        with fabricated constraint ids, a self-contradictory satisfiability fact,
+        duplicate fact ids, and a non-affirmative status must be rejected — and
+        the contents, not just the kinds, are what get checked."""
+        from fiduciary.fce.models import CoherentWitness, ProvedLogicalFact
+
+        scenario = get_pilot_scenario("FCE-SUP-011-V1")
+        genuine, verdict = build_runtime_proof_bundle(scenario)
+        assert verdict.valid
+
+        forged = genuine.model_copy(
+            update={
+                "schema_version": "attacker-schema-v999",
+                "proved_logical_facts": [
+                    ProvedLogicalFact(
+                        fact_id="dup",
+                        kind=LogicalFactKind.CONSTRAINT_PRESENT,
+                        claim="The moon is cheese.",
+                        constraint_ids=["fake_id_1"],
+                        details={},
+                    ),
+                    ProvedLogicalFact(
+                        fact_id="dup",
+                        kind=LogicalFactKind.SATISFIABLE_SET,
+                        claim="Cheese is satisfiable.",
+                        constraint_ids=["fake_id_2"],
+                        details={"status": "contradictory", "obstruction_count": 999},
+                    ),
+                ],
+                "variable_bindings": {"bogus": "binding"},
+                "proof_status": ProofStatus.REJECTED,
+                "validator_status": ValidatorStatus.INVALID,
+            }
+        )
+
+        result = validate_coherent_witness(forged)
+
+        assert not result.valid
+        assert result.validator_status == ValidatorStatus.INVALID
+        joined = " | ".join(result.failures)
+        assert "schema_version mismatch" in joined
+        assert "non-affirmative proof_status" in joined
+        assert "duplicate proved logical fact ids" in joined
+        assert "unknown constraint id" in joined
+        assert "contradictory status" in joined
+        assert "obstruction_count=999" in joined
+
     def test_report_bundle_writes_machine_checkable_proof_artifacts(self, tmp_path):
         scenarios = [
             get_pilot_scenario("FCE-CANDOR-003-V1"),

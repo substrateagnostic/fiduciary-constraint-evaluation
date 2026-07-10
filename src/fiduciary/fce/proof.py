@@ -11,7 +11,7 @@ from __future__ import annotations
 from itertools import combinations
 from typing import Iterable, Sequence
 
-from fiduciary.cohomology.compatibility import check_compatibility
+from fiduciary.cohomology.compatibility import CompatibilityStatus, check_compatibility
 from fiduciary.cohomology.constraints import ConstraintSet
 from fiduciary.cohomology.enclave import EnclaveResolution, check_in_enclave
 from fiduciary.cohomology.higher_compatibility import (
@@ -173,6 +173,23 @@ def _validate_against_scenario(
             f"engine_id mismatch: expected {RUNTIME_ENGINE_ID!r}, got {witness.engine_id!r}"
         )
 
+    # Envelope integrity: a witness must pin the current schema and assert an
+    # affirmative status. A forged witness carrying its own "rejected"/"invalid"
+    # status or an unknown schema version cannot be laundered into a valid proof.
+    if witness.schema_version != COHERENT_WITNESS_SCHEMA_VERSION:
+        failures.append(
+            f"schema_version mismatch: expected {COHERENT_WITNESS_SCHEMA_VERSION!r}, "
+            f"got {witness.schema_version!r}"
+        )
+    if witness.proof_status != ProofStatus.PROVED:
+        failures.append(
+            f"non-affirmative proof_status on witness: {witness.proof_status.value}"
+        )
+    if witness.validator_status not in (ValidatorStatus.NOT_RUN, ValidatorStatus.VALID):
+        failures.append(
+            f"non-affirmative validator_status on witness: {witness.validator_status.value}"
+        )
+
     if scenario.scenario_id == "FCE-CANDOR-003-V1":
         derived_conflict_class, derived_disposition, expected_constraints, expected_minimal_set = (
             _validate_candor_003_runtime(failures, witness, scenario)
@@ -266,6 +283,14 @@ def _validate_against_scenario(
         failures.append(
             f"disposition mismatch: expected {derived_disposition.value}, got {witness.disposition.value}"
         )
+
+    _validate_fact_integrity(
+        witness,
+        scenario,
+        expected_constraints=expected_constraints,
+        derived_conflict_class=derived_conflict_class,
+        failures=failures,
+    )
 
     valid = not failures
     return ProofValidationVerdict(
@@ -920,6 +945,71 @@ def _require_fact_kinds(
     for kind in required_kinds:
         if kind not in actual_kinds:
             failures.append(f"missing proved logical fact kind: {kind.value}")
+
+
+def _validate_fact_integrity(
+    witness: CoherentWitness,
+    scenario: FCEScenario,
+    *,
+    expected_constraints: Sequence[str],
+    derived_conflict_class: MiddlewareConflictType,
+    failures: list[str],
+) -> None:
+    """Check the *contents* of the proved facts, not merely their kinds.
+
+    Previously the validator only asserted that at least one fact of each
+    required kind existed, so hand-built nonsense (unknown constraint ids, a
+    "contradictory" satisfiability fact under a stand-down, duplicate ids) passed
+    as a valid proof. This re-derives the constraint universe from the evaluated
+    runtime case and rejects facts that reference outside it, duplicate ids, and
+    obstruction claims that contradict the derived engine result.
+    """
+    facts = witness.proved_logical_facts
+
+    # Fact ids must be unique so the verdict's checked_fact_ids are meaningful.
+    seen: set[str] = set()
+    duplicates: set[str] = set()
+    for fact in facts:
+        if fact.fact_id in seen:
+            duplicates.add(fact.fact_id)
+        seen.add(fact.fact_id)
+    if duplicates:
+        failures.append(f"duplicate proved logical fact ids: {sorted(duplicates)}")
+
+    # Every referenced constraint id must resolve against the evaluated runtime
+    # case (its policy/request source ids) or the validator-derived expected set
+    # (which includes any synthetic ids the engine legitimately emits, e.g. the
+    # enclave's prompt_content pseudo-constraint).
+    runtime_case = scenario.runtime_case
+    valid_ids: set[str] = set(expected_constraints)
+    if runtime_case is not None:
+        valid_ids.update(c.id for c in runtime_case.policy_constraints)
+        valid_ids.update(c.id for c in runtime_case.request_constraints)
+    for fact in facts:
+        for constraint_id in fact.constraint_ids:
+            if constraint_id not in valid_ids:
+                failures.append(
+                    f"fact {fact.fact_id!r} references unknown constraint id {constraint_id!r}"
+                )
+
+    # Obstruction claims must agree with the derived result. On a stand-down
+    # (no conflict), a satisfiability fact cannot assert a contradiction or a
+    # nonzero obstruction count.
+    if derived_conflict_class == MiddlewareConflictType.NONE:
+        for fact in facts:
+            if fact.kind != LogicalFactKind.SATISFIABLE_SET:
+                continue
+            status = fact.details.get("status")
+            if status == CompatibilityStatus.CONTRADICTORY.value:
+                failures.append(
+                    f"stand-down fact {fact.fact_id!r} asserts contradictory status"
+                )
+            obstruction_count = fact.details.get("obstruction_count")
+            if obstruction_count not in (None, 0):
+                failures.append(
+                    f"stand-down fact {fact.fact_id!r} asserts obstruction_count="
+                    f"{obstruction_count} for a no-conflict result"
+                )
 
 
 def _fact_ids(facts: Iterable[ProvedLogicalFact]) -> list[str]:
