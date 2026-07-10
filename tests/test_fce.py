@@ -4,6 +4,8 @@ Tests for the Fiduciary Constraint Evaluation benchmark package.
 
 from collections import defaultdict
 
+import pytest
+
 from fiduciary.cohomology.constraints import ConstraintPolarity, ConstraintType
 from fiduciary.models import Severity
 from fiduciary.fce import (
@@ -560,6 +562,64 @@ class TestCorrectContinueStandDowns:
             "derived from the constraint set, not hardcoded"
         )
         assert "not_filing_ready" in witness.minimal_conflict_set
+
+
+class TestMalformedRegexFailsClosed:
+    """Finding 9 (gpt-5.6-sol): a non-compiling regex constraint must fail
+    explicitly at construction, never be silently ignored into a stand-down."""
+
+    def test_malformed_request_regex_is_rejected_at_construction(self):
+        with pytest.raises(ValueError, match="non-compiling"):
+            RuntimeConstraintSpec(
+                id="log_intake_facts",
+                constraint_type=ConstraintType.MUST_INCLUDE_REGEX,
+                polarity=ConstraintPolarity.POSITIVE,
+                target="(",  # the reviewer's counterexample
+                severity=Severity.P1,
+            )
+
+    def test_malformed_policy_regex_is_rejected_at_construction(self):
+        with pytest.raises(ValueError, match="non-compiling"):
+            RuntimeConstraintSpec(
+                id="policy_guard",
+                constraint_type=ConstraintType.MUST_NOT_INCLUDE_REGEX,
+                polarity=ConstraintPolarity.NEGATIVE,
+                target="a(b",
+                severity=Severity.P1,
+            )
+
+    def test_malformed_regex_cannot_reach_a_runtime_stand_down(self):
+        # A COMP-013-style request whose target is the reviewer's "(" can no
+        # longer be built into a runtime case at all, so it cannot silently
+        # clear. Constructing the FCERuntimeCase must raise, not produce a
+        # stand-down witness.
+        scenario = get_pilot_scenario("FCE-SUP-011-V1")
+        base = scenario.runtime_case
+        assert base is not None
+        with pytest.raises(ValueError, match="non-compiling"):
+            base.model_copy(
+                update={
+                    "request_constraints": [
+                        RuntimeConstraintSpec(
+                            id="log_intake_facts",
+                            constraint_type=ConstraintType.MUST_INCLUDE_REGEX,
+                            polarity=ConstraintPolarity.POSITIVE,
+                            target="(",
+                            severity=Severity.P1,
+                        )
+                    ]
+                }
+            )
+
+    def test_wellformed_regex_still_constructs(self):
+        spec = RuntimeConstraintSpec(
+            id="ok",
+            constraint_type=ConstraintType.MUST_INCLUDE_REGEX,
+            polarity=ConstraintPolarity.POSITIVE,
+            target=r"lease|security deposit",
+            severity=Severity.P1,
+        )
+        assert spec.target == r"lease|security deposit"
 
 
 class TestScorerParaphraseHardening:

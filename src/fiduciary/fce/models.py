@@ -4,6 +4,9 @@ Typed models for the Fiduciary Constraint Evaluation (FCE) benchmark.
 
 from __future__ import annotations
 
+import hashlib
+import json
+import re
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
@@ -241,6 +244,14 @@ class ConversationTurn(BaseModel):
     content: str
 
 
+_REGEX_CONSTRAINT_TYPES = frozenset(
+    {
+        ConstraintType.MUST_INCLUDE_REGEX,
+        ConstraintType.MUST_NOT_INCLUDE_REGEX,
+    }
+)
+
+
 class RuntimeConstraintSpec(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -250,6 +261,27 @@ class RuntimeConstraintSpec(BaseModel):
     target: str
     severity: Severity = Severity.P1
     is_soul_invariant: bool = False
+
+    @model_validator(mode="after")
+    def _validate_regex_target(self) -> RuntimeConstraintSpec:
+        """Reject non-compiling regex targets at construction time.
+
+        A malformed policy or request regex must fail loudly here rather than
+        being silently swallowed by a downstream ``re.error`` handler and turned
+        into a stand-down. Callers that ingest untrusted constraints should catch
+        this ``ValueError`` and route the request to an explicit UNKNOWN/CLARIFY
+        path — never treat an uncompilable constraint as "no obstruction."
+        """
+        if self.constraint_type in _REGEX_CONSTRAINT_TYPES:
+            try:
+                re.compile(self.target)
+            except re.error as exc:
+                raise ValueError(
+                    f"RuntimeConstraintSpec {self.id!r} has a non-compiling "
+                    f"{self.constraint_type.value} target {self.target!r}: {exc}. "
+                    "Malformed regex constraints must fail explicitly, not stand down."
+                ) from exc
+        return self
 
     def to_normalized_constraint(self) -> NormalizedConstraint:
         return NormalizedConstraint(
