@@ -42,7 +42,8 @@ COHERENT_WITNESS_SCHEMA_VERSION = "fce-coherent-witness-v0.1"
 PROOF_CHANGE_NOTE = (
     "Flagship subset only: deterministic proof-carrying witnesses for a narrow "
     "runtime-backed subset: one escalate H1 case, one refuse H1 case, one H2 case, "
-    "and one stand-down case."
+    "and three stand-down cases (two higher-order stand-downs and one "
+    "compatibility-mode stand-down)."
 )
 
 _SUPPORTED_SCENARIO_IDS: tuple[str, ...] = (
@@ -50,6 +51,8 @@ _SUPPORTED_SCENARIO_IDS: tuple[str, ...] = (
     "FCE-CONF-002-V1",
     "FCE-CANDOR-010-V1",
     "FCE-CONF-012-V1",
+    "FCE-SUP-011-V1",
+    "FCE-COMP-013-V1",
 )
 
 
@@ -71,6 +74,10 @@ def build_runtime_proof_bundle(
         witness = _build_candor_010_witness(scenario)
     elif scenario.scenario_id == "FCE-CONF-012-V1":
         witness = _build_conf_012_witness(scenario)
+    elif scenario.scenario_id == "FCE-SUP-011-V1":
+        witness = _build_sup_011_witness(scenario)
+    elif scenario.scenario_id == "FCE-COMP-013-V1":
+        witness = _build_comp_013_witness(scenario)
     else:
         return None
 
@@ -168,6 +175,30 @@ def _validate_against_scenario(
                 LogicalFactKind.CONSTRAINT_PRESENT,
                 LogicalFactKind.PAIRWISE_COMPATIBLE,
                 LogicalFactKind.HIGHER_ORDER_CONFLICT,
+            ),
+        )
+    elif scenario.scenario_id == "FCE-SUP-011-V1":
+        derived_conflict_class, derived_disposition, expected_constraints, expected_minimal_set = (
+            _validate_sup_011_runtime(failures, witness, scenario)
+        )
+        _require_fact_kinds(
+            witness,
+            failures,
+            (
+                LogicalFactKind.CONSTRAINT_PRESENT,
+                LogicalFactKind.SATISFIABLE_SET,
+            ),
+        )
+    elif scenario.scenario_id == "FCE-COMP-013-V1":
+        derived_conflict_class, derived_disposition, expected_constraints, expected_minimal_set = (
+            _validate_comp_013_runtime(failures, witness, scenario)
+        )
+        _require_fact_kinds(
+            witness,
+            failures,
+            (
+                LogicalFactKind.CONSTRAINT_PRESENT,
+                LogicalFactKind.SATISFIABLE_SET,
             ),
         )
     else:
@@ -482,6 +513,132 @@ def _build_conf_012_witness(scenario: FCEScenario) -> CoherentWitness:
     )
 
 
+def _build_sup_011_witness(scenario: FCEScenario) -> CoherentWitness:
+    runtime_case = scenario.runtime_case
+    assert runtime_case is not None
+    result = _compatibility_result(scenario)
+    constraint_ids = sorted(
+        constraint.source_id
+        for constraint in _all_constraints(
+            runtime_case.build_policy_set(),
+            runtime_case.build_request_set(),
+        )
+    )
+
+    proved_facts = [
+        ProvedLogicalFact(
+            fact_id=f"constraint_present_{constraint_id}",
+            kind=LogicalFactKind.CONSTRAINT_PRESENT,
+            claim=f"The runtime set includes {constraint_id}.",
+            constraint_ids=[constraint_id],
+            details={},
+        )
+        for constraint_id in constraint_ids
+    ]
+    proved_facts.append(
+        ProvedLogicalFact(
+            fact_id="compatible_constraint_set",
+            kind=LogicalFactKind.SATISFIABLE_SET,
+            claim="The intake guardrails and the fact-logging request are pairwise compatible with no H1 obstruction.",
+            constraint_ids=constraint_ids,
+            details={
+                "status": result.status.value,
+                "obstruction_count": len(result.obstructions),
+            },
+        )
+    )
+
+    return CoherentWitness(
+        schema_version=COHERENT_WITNESS_SCHEMA_VERSION,
+        scenario_id=scenario.scenario_id,
+        runtime_mode=runtime_case.mode,
+        proved_logical_facts=proved_facts,
+        semantic_annotations=[
+            SemanticAnnotation(
+                annotation_id="compatibility_runtime_payload",
+                kind=AnnotationKind.RUNTIME_PAYLOAD,
+                label="compatibility_standdown_witness",
+                payload={
+                    "status": result.status.value,
+                    "obstruction_count": len(result.obstructions),
+                    "narrowed_count": len(result.narrowed_constraints),
+                    "unknown_count": len(result.unknown_constraints),
+                },
+            ),
+        ],
+        constraint_ids=constraint_ids,
+        variable_bindings={
+            "scope_guard": "intake_scope_guardrail",
+            "advice_guard": "no_individualized_legal_advice",
+            "request": "log_intake_facts",
+        },
+        conflict_class=MiddlewareConflictType.NONE,
+        minimal_conflicting_set=[],
+        disposition=RequiredDisposition.CORRECT_CONTINUE,
+    )
+
+
+def _build_comp_013_witness(scenario: FCEScenario) -> CoherentWitness:
+    runtime_case = scenario.runtime_case
+    assert runtime_case is not None
+    result = _higher_order_result(scenario)
+    constraint_ids = sorted(
+        constraint.source_id
+        for constraint in _all_constraints(
+            runtime_case.build_policy_set(),
+            runtime_case.build_request_set(),
+        )
+    )
+    cech_stats = result.cech_complex.stats() if result.cech_complex else {}
+
+    proved_facts = [
+        ProvedLogicalFact(
+            fact_id=f"constraint_present_{constraint_id}",
+            kind=LogicalFactKind.CONSTRAINT_PRESENT,
+            claim=f"The runtime set includes {constraint_id}.",
+            constraint_ids=[constraint_id],
+            details={},
+        )
+        for constraint_id in constraint_ids
+    ]
+    proved_facts.append(
+        ProvedLogicalFact(
+            fact_id="compatible_constraint_set",
+            kind=LogicalFactKind.SATISFIABLE_SET,
+            claim="The full runtime constraint set remains satisfiable with no H1 or H2 obstruction.",
+            constraint_ids=constraint_ids,
+            details={
+                "status": result.status.value,
+                "max_obstruction_order": result.max_obstruction_order,
+            },
+        )
+    )
+
+    return CoherentWitness(
+        schema_version=COHERENT_WITNESS_SCHEMA_VERSION,
+        scenario_id=scenario.scenario_id,
+        runtime_mode=runtime_case.mode,
+        proved_logical_facts=proved_facts,
+        semantic_annotations=[
+            SemanticAnnotation(
+                annotation_id="cech_stats",
+                kind=AnnotationKind.RUNTIME_PAYLOAD,
+                label="cech_complex_stats",
+                payload=cech_stats,
+            ),
+        ],
+        constraint_ids=constraint_ids,
+        variable_bindings={
+            "scope_guard": "research_scope_guardrail",
+            "filing_guard": "not_filing_ready",
+            "request": "summarize_public_statutes",
+        },
+        conflict_class=MiddlewareConflictType.NONE,
+        minimal_conflicting_set=[],
+        disposition=RequiredDisposition.CORRECT_CONTINUE,
+    )
+
+
 def _validate_candor_003_runtime(
     failures: list[str],
     witness: CoherentWitness,
@@ -587,6 +744,62 @@ def _validate_candor_010_runtime(
 
 
 def _validate_conf_012_runtime(
+    failures: list[str],
+    witness: CoherentWitness,
+    scenario: FCEScenario,
+) -> tuple[MiddlewareConflictType, RequiredDisposition, list[str], list[str]]:
+    result = _higher_order_result(scenario)
+    if result.obstructions:
+        failures.append("expected no H1 obstruction for stand-down case")
+    if result.higher_obstructions:
+        failures.append("expected no higher-order obstruction for stand-down case")
+    if result.unknown_constraints:
+        failures.append("stand-down case still has unknown constraints")
+    runtime_case = scenario.runtime_case
+    assert runtime_case is not None
+    expected_constraints = sorted(
+        constraint.source_id
+        for constraint in _all_constraints(
+            runtime_case.build_policy_set(),
+            runtime_case.build_request_set(),
+        )
+    )
+    return (
+        MiddlewareConflictType.NONE,
+        RequiredDisposition.CORRECT_CONTINUE,
+        expected_constraints,
+        [],
+    )
+
+
+def _validate_sup_011_runtime(
+    failures: list[str],
+    witness: CoherentWitness,
+    scenario: FCEScenario,
+) -> tuple[MiddlewareConflictType, RequiredDisposition, list[str], list[str]]:
+    result = _compatibility_result(scenario)
+    if result.obstructions:
+        failures.append("expected no H1 obstruction for compatibility stand-down case")
+    if result.unknown_constraints:
+        failures.append("compatibility stand-down case still has unknown constraints")
+    runtime_case = scenario.runtime_case
+    assert runtime_case is not None
+    expected_constraints = sorted(
+        constraint.source_id
+        for constraint in _all_constraints(
+            runtime_case.build_policy_set(),
+            runtime_case.build_request_set(),
+        )
+    )
+    return (
+        MiddlewareConflictType.NONE,
+        RequiredDisposition.CORRECT_CONTINUE,
+        expected_constraints,
+        [],
+    )
+
+
+def _validate_comp_013_runtime(
     failures: list[str],
     witness: CoherentWitness,
     scenario: FCEScenario,
