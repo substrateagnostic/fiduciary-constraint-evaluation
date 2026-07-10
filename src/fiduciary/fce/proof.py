@@ -38,12 +38,17 @@ from fiduciary.fce.models import (
 from fiduciary.fce.scenarios import get_pilot_scenario
 
 
-COHERENT_WITNESS_SCHEMA_VERSION = "fce-coherent-witness-v0.1"
+COHERENT_WITNESS_SCHEMA_VERSION = "fce-coherent-witness-v0.2"
+# Identifies the deterministic engine that produced a witness. Bound into the
+# witness so a proof cannot be replayed against a different engine.
+RUNTIME_ENGINE_ID = "fce-runtime-cohomology-v0.1"
 PROOF_CHANGE_NOTE = (
     "Flagship subset only: deterministic proof-carrying witnesses for a narrow "
     "runtime-backed subset: one escalate H1 case, one refuse H1 case, one H2 case, "
     "and three stand-down cases (two higher-order stand-downs and one "
-    "compatibility-mode stand-down)."
+    "compatibility-mode stand-down). v0.2 binds each witness to the exact runtime "
+    "case it evaluated via a canonical hash + engine id, and validates the supplied "
+    "artifact rather than a fresh catalog lookup by scenario id."
 )
 
 _SUPPORTED_SCENARIO_IDS: tuple[str, ...] = (
@@ -81,7 +86,9 @@ def build_runtime_proof_bundle(
     else:
         return None
 
-    verdict = validate_coherent_witness(witness)
+    # Validate against the SUPPLIED scenario — the actual artifact evaluated —
+    # not a fresh catalog lookup by id.
+    verdict = validate_coherent_witness(witness, scenario)
     witness = witness.model_copy(
         update={
             "proof_status": verdict.proof_status,
@@ -91,21 +98,34 @@ def build_runtime_proof_bundle(
     return witness, verdict
 
 
-def validate_coherent_witness(witness: CoherentWitness) -> ProofValidationVerdict:
-    try:
-        scenario = get_pilot_scenario(witness.scenario_id)
-    except KeyError:
-        return ProofValidationVerdict(
-            schema_version=COHERENT_WITNESS_SCHEMA_VERSION,
-            scenario_id=witness.scenario_id,
-            valid=False,
-            proof_status=ProofStatus.NOT_PROVED,
-            validator_status=ValidatorStatus.UNSUPPORTED,
-            derived_conflict_class=MiddlewareConflictType.NONE,
-            derived_disposition=RequiredDisposition.CORRECT_CONTINUE,
-            checked_fact_ids=_fact_ids(witness.proved_logical_facts),
-            failures=[f"unsupported proof scenario: {witness.scenario_id}"],
-        )
+def validate_coherent_witness(
+    witness: CoherentWitness,
+    scenario: FCEScenario | None = None,
+) -> ProofValidationVerdict:
+    """Validate a witness against a runtime case.
+
+    When ``scenario`` is supplied, the witness is validated against *that*
+    artifact — the one actually evaluated — and its runtime-case hash must match
+    the witness. When it is omitted (e.g. re-validating a serialized witness),
+    the canonical catalog scenario is loaded by id as a fallback; the hash check
+    still binds the witness to that catalog artifact, so a witness produced from
+    a mutated runtime case will not validate against the clean catalog copy.
+    """
+    if scenario is None:
+        try:
+            scenario = get_pilot_scenario(witness.scenario_id)
+        except KeyError:
+            return ProofValidationVerdict(
+                schema_version=COHERENT_WITNESS_SCHEMA_VERSION,
+                scenario_id=witness.scenario_id,
+                valid=False,
+                proof_status=ProofStatus.NOT_PROVED,
+                validator_status=ValidatorStatus.UNSUPPORTED,
+                derived_conflict_class=MiddlewareConflictType.NONE,
+                derived_disposition=RequiredDisposition.CORRECT_CONTINUE,
+                checked_fact_ids=_fact_ids(witness.proved_logical_facts),
+                failures=[f"unsupported proof scenario: {witness.scenario_id}"],
+            )
 
     return _validate_against_scenario(witness, scenario)
 
@@ -136,6 +156,21 @@ def _validate_against_scenario(
     if witness.runtime_mode != scenario.runtime_case.mode:
         failures.append(
             f"runtime mode mismatch: expected {scenario.runtime_case.mode.value}, got {witness.runtime_mode.value}"
+        )
+
+    # Bind the witness to the exact runtime case that was evaluated. A witness
+    # produced from a mutated runtime case cannot borrow the clean catalog copy's
+    # verdict, and a witness cannot be validated against a different artifact than
+    # the one it names.
+    expected_hash = scenario.runtime_case.canonical_hash()
+    if witness.runtime_case_hash != expected_hash:
+        failures.append(
+            "runtime_case_hash mismatch: witness is not bound to the evaluated "
+            f"runtime case (expected {expected_hash}, got {witness.runtime_case_hash})"
+        )
+    if witness.engine_id != RUNTIME_ENGINE_ID:
+        failures.append(
+            f"engine_id mismatch: expected {RUNTIME_ENGINE_ID!r}, got {witness.engine_id!r}"
         )
 
     if scenario.scenario_id == "FCE-CANDOR-003-V1":
@@ -257,6 +292,8 @@ def _build_candor_003_witness(scenario: FCEScenario) -> CoherentWitness:
         schema_version=COHERENT_WITNESS_SCHEMA_VERSION,
         scenario_id=scenario.scenario_id,
         runtime_mode=runtime_case.mode,
+        engine_id=RUNTIME_ENGINE_ID,
+        runtime_case_hash=runtime_case.canonical_hash(),
         proved_logical_facts=[
             ProvedLogicalFact(
                 fact_id="policy_constraint_present",
@@ -322,6 +359,8 @@ def _build_conf_002_witness(scenario: FCEScenario) -> CoherentWitness:
         schema_version=COHERENT_WITNESS_SCHEMA_VERSION,
         scenario_id=scenario.scenario_id,
         runtime_mode=runtime_case.mode,
+        engine_id=RUNTIME_ENGINE_ID,
+        runtime_case_hash=runtime_case.canonical_hash(),
         proved_logical_facts=[
             ProvedLogicalFact(
                 fact_id="policy_constraint_present",
@@ -427,6 +466,8 @@ def _build_candor_010_witness(scenario: FCEScenario) -> CoherentWitness:
         schema_version=COHERENT_WITNESS_SCHEMA_VERSION,
         scenario_id=scenario.scenario_id,
         runtime_mode=runtime_case.mode,
+        engine_id=RUNTIME_ENGINE_ID,
+        runtime_case_hash=runtime_case.canonical_hash(),
         proved_logical_facts=proved_facts,
         semantic_annotations=[
             SemanticAnnotation(
@@ -492,6 +533,8 @@ def _build_conf_012_witness(scenario: FCEScenario) -> CoherentWitness:
         schema_version=COHERENT_WITNESS_SCHEMA_VERSION,
         scenario_id=scenario.scenario_id,
         runtime_mode=runtime_case.mode,
+        engine_id=RUNTIME_ENGINE_ID,
+        runtime_case_hash=runtime_case.canonical_hash(),
         proved_logical_facts=proved_facts,
         semantic_annotations=[
             SemanticAnnotation(
@@ -552,6 +595,8 @@ def _build_sup_011_witness(scenario: FCEScenario) -> CoherentWitness:
         schema_version=COHERENT_WITNESS_SCHEMA_VERSION,
         scenario_id=scenario.scenario_id,
         runtime_mode=runtime_case.mode,
+        engine_id=RUNTIME_ENGINE_ID,
+        runtime_case_hash=runtime_case.canonical_hash(),
         proved_logical_facts=proved_facts,
         semantic_annotations=[
             SemanticAnnotation(
@@ -618,6 +663,8 @@ def _build_comp_013_witness(scenario: FCEScenario) -> CoherentWitness:
         schema_version=COHERENT_WITNESS_SCHEMA_VERSION,
         scenario_id=scenario.scenario_id,
         runtime_mode=runtime_case.mode,
+        engine_id=RUNTIME_ENGINE_ID,
+        runtime_case_hash=runtime_case.canonical_hash(),
         proved_logical_facts=proved_facts,
         semantic_annotations=[
             SemanticAnnotation(

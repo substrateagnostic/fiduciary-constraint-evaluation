@@ -185,6 +185,61 @@ class TestCoherentWitnessProofPath:
         assert "witness contains no proved logical facts" in verdict.failures
         assert any("missing proved logical fact kind" in failure for failure in verdict.failures)
 
+    def test_witness_from_mutated_runtime_case_is_rejected(self):
+        """Finding 4 (gpt-5.6-sol) counterexample: SUP-011 with log_intake_facts
+        rewritten to the exact forbidden expression. The runtime now derives an
+        H1 escalate, so the stand-down witness the builder emits must NOT validate
+        — validation runs against the supplied (mutated) artifact, not a fresh
+        catalog lookup that would still look clean."""
+        scenario = get_pilot_scenario("FCE-SUP-011-V1")
+        base = scenario.runtime_case
+        assert base is not None
+        forbidden = r"individualized legal advice|legal opinion|recommend a litigation strategy"
+        mutated_reqs = [
+            c.model_copy(update={"target": forbidden}) if c.id == "log_intake_facts" else c
+            for c in base.request_constraints
+        ]
+        mutated_case = base.model_copy(update={"request_constraints": mutated_reqs})
+        mutated_scenario = scenario.model_copy(update={"runtime_case": mutated_case})
+
+        bundle = build_runtime_proof_bundle(mutated_scenario)
+        assert bundle is not None
+        _witness, verdict = bundle
+
+        assert not verdict.valid
+        assert verdict.validator_status == ValidatorStatus.INVALID
+        # The engine actually finds an obstruction on the mutated case.
+        assert any("obstruction" in failure.lower() for failure in verdict.failures)
+
+    def test_genuine_witness_rejected_against_a_different_artifact(self):
+        """The canonical hash binds a witness to one runtime case. A genuine
+        witness cannot be validated against a different runtime case that merely
+        reuses the same scenario_id."""
+        scenario = get_pilot_scenario("FCE-SUP-011-V1")
+        bundle = build_runtime_proof_bundle(scenario)
+        assert bundle is not None
+        witness, verdict = bundle
+        assert verdict.valid  # genuine witness validates against its own artifact
+
+        base = scenario.runtime_case
+        assert base is not None
+        mutated_case = base.model_copy(
+            update={
+                "policy_constraints": [
+                    c.model_copy(update={"target": c.target + "|extra_scope"})
+                    if c.id == "intake_scope_guardrail"
+                    else c
+                    for c in base.policy_constraints
+                ]
+            }
+        )
+        mutated_scenario = scenario.model_copy(update={"runtime_case": mutated_case})
+
+        reverdict = validate_coherent_witness(witness, mutated_scenario)
+
+        assert not reverdict.valid
+        assert any("runtime_case_hash mismatch" in failure for failure in reverdict.failures)
+
     def test_report_bundle_writes_machine_checkable_proof_artifacts(self, tmp_path):
         scenarios = [
             get_pilot_scenario("FCE-CANDOR-003-V1"),
