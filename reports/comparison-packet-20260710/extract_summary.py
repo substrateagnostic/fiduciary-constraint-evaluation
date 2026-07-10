@@ -130,6 +130,14 @@ for provider_label, model_id, dirname in MODELS:
     if cats:
         line += f", stop_details_category={dict(cats)}"
     print(line)
+    refusals = [rec for rec in raw if rec["raw_payload"].get("stop_reason") == "refusal"]
+    if refusals:
+        by_scenario = Counter(rec["raw_payload"]["scenario_id"] for rec in refusals)
+        by_arm = Counter(rec["raw_payload"]["arm"] for rec in refusals)
+        partial = sum(1 for rec in refusals if rec.get("response_text", "").strip())
+        print(f"    refusals by scenario: {dict(sorted(by_scenario.items()))}")
+        print(f"    refusals by arm: {dict(sorted(by_arm.items()))}")
+        print(f"    refusals with partial text before mid-stream stop: {partial}")
 print()
 
 print("## RUNTIME WITNESS + DISPOSITION MIX (from manifest.json / runs.csv)\n")
