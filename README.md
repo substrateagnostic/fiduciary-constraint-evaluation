@@ -122,6 +122,15 @@ Curated, sanitized examples are kept small:
 
 Generated raw provider outputs and full comparison packets are intentionally excluded from the public tree. Regenerate local artifacts under `out/` when needed.
 
+## Baselines
+
+An earlier, separate evaluation series from January 2026 (the 17-scenario Fiduciary Evals
+benchmark) is archived under [`docs/baselines/2026-01/`](docs/baselines/2026-01/) as a
+longitudinal reference. Those runs used a different scenario set, a different scorer
+(weighted refusal-phrase matching), and a different taxonomy, so they are **not** directly
+comparable to this repository's 33-scenario packet. See that directory's README for the
+model list and caveats.
+
 ## Limitations
 
 - The pilot has only 33 scenarios.
