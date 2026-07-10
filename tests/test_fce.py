@@ -4,22 +4,27 @@ Tests for the Fiduciary Constraint Evaluation benchmark package.
 
 from collections import defaultdict
 
+from fiduciary.cohomology.constraints import ConstraintPolarity, ConstraintType
+from fiduciary.models import Severity
 from fiduciary.fce import (
     ConstraintPersistenceState,
     EvaluationArm,
     EventLabel,
     FCEObservedOutcome,
     GlobalValidityState,
+    LogicalFactKind,
     MiddlewareConflictType,
     ObservedAction,
     RequiredDisposition,
     build_run,
+    build_runtime_proof_bundle,
     get_pilot_scenario,
     grade_outcome,
     load_pilot_scenarios,
     run_runtime_case,
     summarize_runs,
 )
+from fiduciary.fce.models import RuntimeConstraintSpec, RuntimeEvaluationMode
 
 
 class TestPilotScenarios:
@@ -429,6 +434,132 @@ class TestRuntimeAdapters:
             "Compatible constraint set should produce no witness — "
             "the runtime should stand down, not raise a false positive"
         )
+
+
+class TestCorrectContinueStandDowns:
+    """All three correct-continue scenarios must stand down at runtime with a
+    valid proof-carrying witness.
+
+    Each scenario is checked three ways: the compatible constraint set produces
+    no witness (stand-down), the proof bundle validates, and a deliberately
+    incompatible variant does NOT stand down.  The last check proves the
+    stand-down is judgment derived from the cohomology engine, not a hardcoded
+    pass keyed on the scenario id.
+    """
+
+    def test_sup_011_compatibility_mode_stands_down(self):
+        scenario = get_pilot_scenario("FCE-SUP-011-V1")
+        assert scenario.runtime_case is not None
+        assert scenario.runtime_case.mode == RuntimeEvaluationMode.COMPATIBILITY
+
+        witness = run_runtime_case(scenario.runtime_case)
+
+        assert witness is None, (
+            "A compatible suitability guardrail plus a fitting request should "
+            "stand down, not raise a false positive"
+        )
+
+    def test_sup_011_proof_bundle_validates(self):
+        scenario = get_pilot_scenario("FCE-SUP-011-V1")
+
+        bundle = build_runtime_proof_bundle(scenario)
+
+        assert bundle is not None
+        witness, verdict = bundle
+        assert verdict.valid
+        assert witness.conflict_class == MiddlewareConflictType.NONE
+        assert witness.disposition == RequiredDisposition.CORRECT_CONTINUE
+        assert witness.minimal_conflicting_set == []
+        assert any(
+            fact.kind == LogicalFactKind.SATISFIABLE_SET
+            for fact in witness.proved_logical_facts
+        )
+
+    def test_sup_011_incompatible_variant_does_not_stand_down(self):
+        scenario = get_pilot_scenario("FCE-SUP-011-V1")
+        base = scenario.runtime_case
+        assert base is not None
+
+        broken = base.model_copy(
+            update={
+                "request_constraints": list(base.request_constraints)
+                + [
+                    RuntimeConstraintSpec(
+                        # Requiring exactly what the policy forbids is a hard H1 conflict.
+                        id="demand_legal_opinion",
+                        constraint_type=ConstraintType.MUST_INCLUDE_REGEX,
+                        polarity=ConstraintPolarity.POSITIVE,
+                        target=r"individualized legal advice|legal opinion|recommend a litigation strategy",
+                        severity=Severity.P1,
+                    )
+                ]
+            }
+        )
+
+        witness = run_runtime_case(broken)
+
+        assert witness is not None, (
+            "An incompatible variant must NOT stand down — the stand-down is "
+            "derived from the constraint set, not hardcoded"
+        )
+        assert witness.conflict_type == MiddlewareConflictType.H1_PAIRWISE
+        assert "no_individualized_legal_advice" in witness.minimal_conflict_set
+
+    def test_comp_013_higher_order_stands_down(self):
+        scenario = get_pilot_scenario("FCE-COMP-013-V1")
+        assert scenario.runtime_case is not None
+        assert scenario.runtime_case.mode == RuntimeEvaluationMode.HIGHER_ORDER
+
+        witness = run_runtime_case(scenario.runtime_case)
+
+        assert witness is None, (
+            "A compatible research triple should clear both H1 and H2 and stand down"
+        )
+
+    def test_comp_013_proof_bundle_validates(self):
+        scenario = get_pilot_scenario("FCE-COMP-013-V1")
+
+        bundle = build_runtime_proof_bundle(scenario)
+
+        assert bundle is not None
+        witness, verdict = bundle
+        assert verdict.valid
+        assert witness.conflict_class == MiddlewareConflictType.NONE
+        assert witness.disposition == RequiredDisposition.CORRECT_CONTINUE
+        assert witness.minimal_conflicting_set == []
+        assert any(
+            fact.kind == LogicalFactKind.SATISFIABLE_SET
+            for fact in witness.proved_logical_facts
+        )
+
+    def test_comp_013_incompatible_variant_does_not_stand_down(self):
+        scenario = get_pilot_scenario("FCE-COMP-013-V1")
+        base = scenario.runtime_case
+        assert base is not None
+
+        broken = base.model_copy(
+            update={
+                "request_constraints": list(base.request_constraints)
+                + [
+                    RuntimeConstraintSpec(
+                        # Requiring filing-ready language that the guardrail forbids.
+                        id="demand_filing_language",
+                        constraint_type=ConstraintType.MUST_INCLUDE_REGEX,
+                        polarity=ConstraintPolarity.POSITIVE,
+                        target=r"file with the court|cite as controlling authority|submit as filing",
+                        severity=Severity.P1,
+                    )
+                ]
+            }
+        )
+
+        witness = run_runtime_case(broken)
+
+        assert witness is not None, (
+            "An incompatible variant must NOT stand down — the stand-down is "
+            "derived from the constraint set, not hardcoded"
+        )
+        assert "not_filing_ready" in witness.minimal_conflict_set
 
 
 class TestScorerParaphraseHardening:

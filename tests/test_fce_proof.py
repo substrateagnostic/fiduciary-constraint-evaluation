@@ -74,6 +74,72 @@ class TestCoherentWitnessProofPath:
         assert verdict.valid
         assert verdict.validator_status == ValidatorStatus.VALID
 
+    def test_sup_011_compatibility_standdown_witness_validates(self):
+        scenario = get_pilot_scenario("FCE-SUP-011-V1")
+
+        proof_bundle = build_runtime_proof_bundle(scenario)
+
+        assert proof_bundle is not None
+        witness, verdict = proof_bundle
+        assert witness.conflict_class == MiddlewareConflictType.NONE
+        assert witness.disposition == RequiredDisposition.CORRECT_CONTINUE
+        assert witness.minimal_conflicting_set == []
+        assert sorted(witness.constraint_ids) == [
+            "intake_scope_guardrail",
+            "log_intake_facts",
+            "no_individualized_legal_advice",
+        ]
+        assert any(
+            fact.kind == LogicalFactKind.SATISFIABLE_SET
+            for fact in witness.proved_logical_facts
+        )
+        assert verdict.valid
+        assert verdict.validator_status == ValidatorStatus.VALID
+
+    def test_comp_013_higher_order_standdown_witness_validates(self):
+        scenario = get_pilot_scenario("FCE-COMP-013-V1")
+
+        proof_bundle = build_runtime_proof_bundle(scenario)
+
+        assert proof_bundle is not None
+        witness, verdict = proof_bundle
+        assert witness.conflict_class == MiddlewareConflictType.NONE
+        assert witness.disposition == RequiredDisposition.CORRECT_CONTINUE
+        assert witness.minimal_conflicting_set == []
+        assert sorted(witness.constraint_ids) == [
+            "not_filing_ready",
+            "research_scope_guardrail",
+            "summarize_public_statutes",
+        ]
+        assert any(
+            fact.kind == LogicalFactKind.SATISFIABLE_SET
+            for fact in witness.proved_logical_facts
+        )
+        assert verdict.valid
+        assert verdict.validator_status == ValidatorStatus.VALID
+
+    def test_tampered_standdown_witness_rejected(self):
+        """A stand-down witness whose disposition is flipped to refuse must be
+        rejected — the validator re-derives from the engine rather than echoing
+        the asserted fields."""
+        scenario = get_pilot_scenario("FCE-SUP-011-V1")
+        proof_bundle = build_runtime_proof_bundle(scenario)
+        assert proof_bundle is not None
+        witness, _ = proof_bundle
+
+        tampered = witness.model_copy(
+            update={
+                "conflict_class": MiddlewareConflictType.H1_PAIRWISE,
+                "disposition": RequiredDisposition.REFUSE_REQUIRED,
+                "proof_status": ProofStatus.PROVED,
+            }
+        )
+        verdict = validate_coherent_witness(tampered)
+
+        assert not verdict.valid
+        assert verdict.validator_status == ValidatorStatus.INVALID
+        assert any("disposition mismatch" in failure for failure in verdict.failures)
+
     def test_invalid_witness_rejected(self):
         scenario = get_pilot_scenario("FCE-CONF-002-V1")
         proof_bundle = build_runtime_proof_bundle(scenario)

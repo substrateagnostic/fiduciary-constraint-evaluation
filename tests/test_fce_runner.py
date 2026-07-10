@@ -206,6 +206,8 @@ class TestPilotRunnerModes:
             get_pilot_scenario("FCE-CANDOR-003-V1"),
             get_pilot_scenario("FCE-CANDOR-010-V1"),
             get_pilot_scenario("FCE-CONF-012-V1"),
+            get_pilot_scenario("FCE-SUP-011-V1"),
+            get_pilot_scenario("FCE-COMP-013-V1"),
         ]
 
         result = run_pilot(
@@ -219,11 +221,13 @@ class TestPilotRunnerModes:
 
         assert manifest["capability_summary"]["witness_mode_counts"]["fixture"] == 1
         assert manifest["capability_summary"]["witness_mode_counts"]["runtime"] == 1
-        assert manifest["capability_summary"]["witness_mode_counts"]["proof_supported_runtime"] == 3
+        # Three correct-continue stand-downs (CONF-012, SUP-011, COMP-013) join the
+        # refuse and escalate proofs → five proof-supported runtime witnesses.
+        assert manifest["capability_summary"]["witness_mode_counts"]["proof_supported_runtime"] == 5
         assert manifest["runtime_disposition_coverage"]["clarify_required"]["runtime"] == 1
         assert manifest["runtime_disposition_coverage"]["refuse_required"]["proof_supported_runtime"] == 1
         assert manifest["runtime_disposition_coverage"]["escalate_required"]["proof_supported_runtime"] == 1
-        assert manifest["runtime_disposition_coverage"]["correct_continue"]["proof_supported_runtime"] == 1
+        assert manifest["runtime_disposition_coverage"]["correct_continue"]["proof_supported_runtime"] == 3
         assert "Witness Capability Summary" in report_text
         assert "proof_supported_runtime" in report_text
         assert "Runtime Disposition Coverage" in report_text
