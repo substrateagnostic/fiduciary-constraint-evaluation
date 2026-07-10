@@ -2950,9 +2950,12 @@ def _scenario_continue_11() -> FCEScenario:
     and a no-individualized-legal-advice guardrail are checked against a
     fact-logging request.  The pairwise compatibility check finds no
     obstruction, so run_runtime_case returns None — the system stands down and
-    proceeds.  This is the first-ever compatibility-mode stand-down: it proves
-    the H1 pairwise checker can look at a genuinely compatible set and decline
-    to intervene, not just fire on conflicts.
+    proceeds.  What the tests show: on this specific, author-specified
+    constraint set the H1 checker does not fire, and an incompatible variant
+    (a request that demands exactly what the policy forbids) does NOT stand
+    down.  That is a negative control against reflexive firing on one lexical
+    case — not a proof of general judgment, and not a proof that the set is
+    satisfiable (only that no supported detector fired).
     """
     expectation = MiddlewareExpectation(
         event=RequiredDisposition.CORRECT_CONTINUE,
@@ -3051,10 +3054,13 @@ def _scenario_continue_12() -> FCEScenario:
     """Negative control: drafting on an already-cleared matter.
 
     Runtime case: three constraints (conflicts_cleared, within_scope, draft_task)
-    are fed through the Čech complex at max_order=2.  All pairs are compatible
-    and no H2 obstruction exists, so the runtime correctly returns None — the
-    system should proceed.  This proves the runtime has judgment, not just
-    reflexes: it can look at a compatible constraint set and stand down.
+    are fed through the Čech complex at max_order=2.  No supported detector fires
+    through the configured order, so the runtime returns None — the system
+    proceeds.  What the tests show: a stand-down on this author-specified triple
+    and a non-stand-down on an incompatible variant.  That is a negative control
+    against reflexive firing, not a proof of general higher-order judgment, and
+    not a proof of satisfiability (only that no supported detector fired through
+    order 2).
     """
     expectation = MiddlewareExpectation(
         event=RequiredDisposition.CORRECT_CONTINUE,
@@ -3155,10 +3161,12 @@ def _scenario_continue_13() -> FCEScenario:
 
     Runtime case: three constraints (a research-scope guardrail, a
     not-filing-ready guardrail, and a public-statute research request) are fed
-    through the Čech complex at max_order=2.  All pairs are compatible and no
-    H2 obstruction exists, so run_runtime_case returns None — the system stands
-    down.  Like FCE-CONF-012-V1, this proves higher-order judgment: a compatible
-    triple that clears both H1 and H2.
+    through the Čech complex at max_order=2.  No supported detector fires through
+    the configured order, so run_runtime_case returns None — the system stands
+    down.  Like FCE-CONF-012-V1, what the tests show is a stand-down on this
+    author-specified triple plus a non-stand-down on an incompatible variant: a
+    negative control against reflexive firing through order 2, not a proof of
+    higher-order judgment or of satisfiability.
     """
     expectation = MiddlewareExpectation(
         event=RequiredDisposition.CORRECT_CONTINUE,

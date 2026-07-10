@@ -107,10 +107,12 @@ Some pilot scenarios include an executable approximation of the middleware arm:
 - compatibility-mode refusal for a deterministic concealment-pattern request
 - compatibility-mode clarification for unresolved authority/jurisdiction ambiguity
 - higher-order compatibility checking for selected impossibility-style confidentiality, billing, safekeeping, and candor scenarios
-- higher-order compatibility checking for two negative-control scenarios (`FCE-CONF-012-V1`, `FCE-COMP-013-V1`) where the constraint set is genuinely compatible — the Čech complex runs, finds no obstruction at any order, and the runtime correctly stands down
-- compatibility-mode stand-down for a negative-control scenario (`FCE-SUP-011-V1`) where a within-scope request is pairwise compatible with the intake guardrails — the H1 checker finds no obstruction and the runtime stands down rather than firing a false positive
+- higher-order compatibility checking for two negative-control scenarios (`FCE-CONF-012-V1`, `FCE-COMP-013-V1`) where the constraint set is compatible under the supported detectors — the Čech complex runs and no supported detector fires on a static, author-specified constraint set through the configured order (2), so the runtime stands down
+- compatibility-mode stand-down for a negative-control scenario (`FCE-SUP-011-V1`) where a within-scope request raises no pairwise obstruction against the intake guardrails — the H1 checker finds no conflict and the runtime stands down rather than firing a false positive
 
-The runtime layer detects formal constraint conflicts that the model may miss. Witness records are derived entirely from obstruction analysis — the disposition, conflict type, and constraint IDs come from what the runtime actually found, not from the scenario's expected answer. This decoupling is critical: the runtime arm demonstrates *detection capability*, and the comparison with response arms is whether the model's natural response reaches the same conclusion that the formal check would have forced.
+A stand-down here means **no supported detector fired**, not an affirmative proof that the constraint set is satisfiable. The H1/H2 detectors recognize a bounded vocabulary of conflicts (see Limitations); absence of a recognized obstruction is weaker than a checked satisfying assignment. Affirmative satisfiability is a v0.2 runtime goal (the clearance certificate), not a current guarantee.
+
+The runtime layer detects formal constraint conflicts that the model may miss. The **witness record** — disposition, conflict type, minimal set, and constraint IDs — is derived entirely from obstruction analysis, not from the scenario's expected answer. Note the boundary: in the executable runtime/proof arm the *surrounding adapter fields* are not yet decoupled — on a stand-down the response prose falls back to `middleware_expected.human_readable_explanation`, the reported actions are derived from `middleware_expected.event` and `expected_behavior.must_do_one_of`, and the identified duties come from `expected_behavior.must_identify`. Those are answer-key-derived scaffolding around a runtime-derived witness, and decoupling them is tracked as finding 6 in the gpt-5.6-sol review. The comparison with response arms is whether the model's natural response reaches the same conclusion the formal check would have forced.
 
 These cases are intentionally narrow. They demonstrate how a scenario can carry an audit-safe witness path without claiming that every benchmark item is already fully automatable.
 
@@ -145,8 +147,12 @@ Proof-supported scenarios:
 
 What is actually proved:
 
-- that the deterministic runtime check found the claimed pairwise conflict, higher-order obstruction, or clean satisfiable set
-- that the witness conflict class, minimal set, and disposition match that deterministic result
+- that the deterministic runtime check, re-run on the exact runtime case bound to the witness (by canonical hash + engine id), reproduced the claimed pairwise conflict or higher-order obstruction — or, for a stand-down, found no obstruction under the supported detectors through the configured order
+- that the witness conflict class, minimal set, disposition, fact contents, and referenced constraint ids match that deterministic result
+
+What is **not** proved:
+
+- for stand-down witnesses, that the constraint set is satisfiable. The witness attests only that no supported detector fired, not that a satisfying assignment was found and checked. An affirmative satisfiability proof (a checked assignment, or a real regex-language intersection check) is a v0.2 goal, not a current claim.
 
 What remains annotation-only:
 
@@ -188,7 +194,7 @@ The following controls establish rubric discriminative power:
 - 33 typed pilot scenarios implemented and tested
 - 3 negative-control (correct_continue) scenarios for overcaution detection
 - Rubric scoring and summary computation implemented
-- Runtime arm fully decoupled from answer key — witness derived from obstruction analysis
+- Runtime **witness** decoupled from the answer key — disposition, conflict type, minimal set, and constraint IDs derived from obstruction analysis. The surrounding adapter fields (stand-down response prose, reported actions, identified duties) are still answer-key-derived; full adapter decoupling is tracked as gpt-5.6-sol finding 6
 - Ablation tests documenting rubric discriminative power and known limitations
 - Executable runtime adapters operational for a subset of enclave and higher-order scenarios
 - Runtime disposition coverage now includes `clarify_required`, `refuse_required`, `escalate_required`, and `correct_continue`

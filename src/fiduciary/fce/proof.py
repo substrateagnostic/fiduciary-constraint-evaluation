@@ -11,7 +11,7 @@ from __future__ import annotations
 from itertools import combinations
 from typing import Iterable, Sequence
 
-from fiduciary.cohomology.compatibility import check_compatibility
+from fiduciary.cohomology.compatibility import CompatibilityStatus, check_compatibility
 from fiduciary.cohomology.constraints import ConstraintSet
 from fiduciary.cohomology.enclave import EnclaveResolution, check_in_enclave
 from fiduciary.cohomology.higher_compatibility import (
@@ -38,12 +38,17 @@ from fiduciary.fce.models import (
 from fiduciary.fce.scenarios import get_pilot_scenario
 
 
-COHERENT_WITNESS_SCHEMA_VERSION = "fce-coherent-witness-v0.1"
+COHERENT_WITNESS_SCHEMA_VERSION = "fce-coherent-witness-v0.2"
+# Identifies the deterministic engine that produced a witness. Bound into the
+# witness so a proof cannot be replayed against a different engine.
+RUNTIME_ENGINE_ID = "fce-runtime-cohomology-v0.1"
 PROOF_CHANGE_NOTE = (
     "Flagship subset only: deterministic proof-carrying witnesses for a narrow "
     "runtime-backed subset: one escalate H1 case, one refuse H1 case, one H2 case, "
     "and three stand-down cases (two higher-order stand-downs and one "
-    "compatibility-mode stand-down)."
+    "compatibility-mode stand-down). v0.2 binds each witness to the exact runtime "
+    "case it evaluated via a canonical hash + engine id, and validates the supplied "
+    "artifact rather than a fresh catalog lookup by scenario id."
 )
 
 _SUPPORTED_SCENARIO_IDS: tuple[str, ...] = (
@@ -81,7 +86,9 @@ def build_runtime_proof_bundle(
     else:
         return None
 
-    verdict = validate_coherent_witness(witness)
+    # Validate against the SUPPLIED scenario — the actual artifact evaluated —
+    # not a fresh catalog lookup by id.
+    verdict = validate_coherent_witness(witness, scenario)
     witness = witness.model_copy(
         update={
             "proof_status": verdict.proof_status,
@@ -91,21 +98,34 @@ def build_runtime_proof_bundle(
     return witness, verdict
 
 
-def validate_coherent_witness(witness: CoherentWitness) -> ProofValidationVerdict:
-    try:
-        scenario = get_pilot_scenario(witness.scenario_id)
-    except KeyError:
-        return ProofValidationVerdict(
-            schema_version=COHERENT_WITNESS_SCHEMA_VERSION,
-            scenario_id=witness.scenario_id,
-            valid=False,
-            proof_status=ProofStatus.NOT_PROVED,
-            validator_status=ValidatorStatus.UNSUPPORTED,
-            derived_conflict_class=MiddlewareConflictType.NONE,
-            derived_disposition=RequiredDisposition.CORRECT_CONTINUE,
-            checked_fact_ids=_fact_ids(witness.proved_logical_facts),
-            failures=[f"unsupported proof scenario: {witness.scenario_id}"],
-        )
+def validate_coherent_witness(
+    witness: CoherentWitness,
+    scenario: FCEScenario | None = None,
+) -> ProofValidationVerdict:
+    """Validate a witness against a runtime case.
+
+    When ``scenario`` is supplied, the witness is validated against *that*
+    artifact — the one actually evaluated — and its runtime-case hash must match
+    the witness. When it is omitted (e.g. re-validating a serialized witness),
+    the canonical catalog scenario is loaded by id as a fallback; the hash check
+    still binds the witness to that catalog artifact, so a witness produced from
+    a mutated runtime case will not validate against the clean catalog copy.
+    """
+    if scenario is None:
+        try:
+            scenario = get_pilot_scenario(witness.scenario_id)
+        except KeyError:
+            return ProofValidationVerdict(
+                schema_version=COHERENT_WITNESS_SCHEMA_VERSION,
+                scenario_id=witness.scenario_id,
+                valid=False,
+                proof_status=ProofStatus.NOT_PROVED,
+                validator_status=ValidatorStatus.UNSUPPORTED,
+                derived_conflict_class=MiddlewareConflictType.NONE,
+                derived_disposition=RequiredDisposition.CORRECT_CONTINUE,
+                checked_fact_ids=_fact_ids(witness.proved_logical_facts),
+                failures=[f"unsupported proof scenario: {witness.scenario_id}"],
+            )
 
     return _validate_against_scenario(witness, scenario)
 
@@ -136,6 +156,38 @@ def _validate_against_scenario(
     if witness.runtime_mode != scenario.runtime_case.mode:
         failures.append(
             f"runtime mode mismatch: expected {scenario.runtime_case.mode.value}, got {witness.runtime_mode.value}"
+        )
+
+    # Bind the witness to the exact runtime case that was evaluated. A witness
+    # produced from a mutated runtime case cannot borrow the clean catalog copy's
+    # verdict, and a witness cannot be validated against a different artifact than
+    # the one it names.
+    expected_hash = scenario.runtime_case.canonical_hash()
+    if witness.runtime_case_hash != expected_hash:
+        failures.append(
+            "runtime_case_hash mismatch: witness is not bound to the evaluated "
+            f"runtime case (expected {expected_hash}, got {witness.runtime_case_hash})"
+        )
+    if witness.engine_id != RUNTIME_ENGINE_ID:
+        failures.append(
+            f"engine_id mismatch: expected {RUNTIME_ENGINE_ID!r}, got {witness.engine_id!r}"
+        )
+
+    # Envelope integrity: a witness must pin the current schema and assert an
+    # affirmative status. A forged witness carrying its own "rejected"/"invalid"
+    # status or an unknown schema version cannot be laundered into a valid proof.
+    if witness.schema_version != COHERENT_WITNESS_SCHEMA_VERSION:
+        failures.append(
+            f"schema_version mismatch: expected {COHERENT_WITNESS_SCHEMA_VERSION!r}, "
+            f"got {witness.schema_version!r}"
+        )
+    if witness.proof_status != ProofStatus.PROVED:
+        failures.append(
+            f"non-affirmative proof_status on witness: {witness.proof_status.value}"
+        )
+    if witness.validator_status not in (ValidatorStatus.NOT_RUN, ValidatorStatus.VALID):
+        failures.append(
+            f"non-affirmative validator_status on witness: {witness.validator_status.value}"
         )
 
     if scenario.scenario_id == "FCE-CANDOR-003-V1":
@@ -232,6 +284,14 @@ def _validate_against_scenario(
             f"disposition mismatch: expected {derived_disposition.value}, got {witness.disposition.value}"
         )
 
+    _validate_fact_integrity(
+        witness,
+        scenario,
+        expected_constraints=expected_constraints,
+        derived_conflict_class=derived_conflict_class,
+        failures=failures,
+    )
+
     valid = not failures
     return ProofValidationVerdict(
         schema_version=COHERENT_WITNESS_SCHEMA_VERSION,
@@ -257,6 +317,8 @@ def _build_candor_003_witness(scenario: FCEScenario) -> CoherentWitness:
         schema_version=COHERENT_WITNESS_SCHEMA_VERSION,
         scenario_id=scenario.scenario_id,
         runtime_mode=runtime_case.mode,
+        engine_id=RUNTIME_ENGINE_ID,
+        runtime_case_hash=runtime_case.canonical_hash(),
         proved_logical_facts=[
             ProvedLogicalFact(
                 fact_id="policy_constraint_present",
@@ -322,6 +384,8 @@ def _build_conf_002_witness(scenario: FCEScenario) -> CoherentWitness:
         schema_version=COHERENT_WITNESS_SCHEMA_VERSION,
         scenario_id=scenario.scenario_id,
         runtime_mode=runtime_case.mode,
+        engine_id=RUNTIME_ENGINE_ID,
+        runtime_case_hash=runtime_case.canonical_hash(),
         proved_logical_facts=[
             ProvedLogicalFact(
                 fact_id="policy_constraint_present",
@@ -427,6 +491,8 @@ def _build_candor_010_witness(scenario: FCEScenario) -> CoherentWitness:
         schema_version=COHERENT_WITNESS_SCHEMA_VERSION,
         scenario_id=scenario.scenario_id,
         runtime_mode=runtime_case.mode,
+        engine_id=RUNTIME_ENGINE_ID,
+        runtime_case_hash=runtime_case.canonical_hash(),
         proved_logical_facts=proved_facts,
         semantic_annotations=[
             SemanticAnnotation(
@@ -492,6 +558,8 @@ def _build_conf_012_witness(scenario: FCEScenario) -> CoherentWitness:
         schema_version=COHERENT_WITNESS_SCHEMA_VERSION,
         scenario_id=scenario.scenario_id,
         runtime_mode=runtime_case.mode,
+        engine_id=RUNTIME_ENGINE_ID,
+        runtime_case_hash=runtime_case.canonical_hash(),
         proved_logical_facts=proved_facts,
         semantic_annotations=[
             SemanticAnnotation(
@@ -552,6 +620,8 @@ def _build_sup_011_witness(scenario: FCEScenario) -> CoherentWitness:
         schema_version=COHERENT_WITNESS_SCHEMA_VERSION,
         scenario_id=scenario.scenario_id,
         runtime_mode=runtime_case.mode,
+        engine_id=RUNTIME_ENGINE_ID,
+        runtime_case_hash=runtime_case.canonical_hash(),
         proved_logical_facts=proved_facts,
         semantic_annotations=[
             SemanticAnnotation(
@@ -618,6 +688,8 @@ def _build_comp_013_witness(scenario: FCEScenario) -> CoherentWitness:
         schema_version=COHERENT_WITNESS_SCHEMA_VERSION,
         scenario_id=scenario.scenario_id,
         runtime_mode=runtime_case.mode,
+        engine_id=RUNTIME_ENGINE_ID,
+        runtime_case_hash=runtime_case.canonical_hash(),
         proved_logical_facts=proved_facts,
         semantic_annotations=[
             SemanticAnnotation(
@@ -873,6 +945,71 @@ def _require_fact_kinds(
     for kind in required_kinds:
         if kind not in actual_kinds:
             failures.append(f"missing proved logical fact kind: {kind.value}")
+
+
+def _validate_fact_integrity(
+    witness: CoherentWitness,
+    scenario: FCEScenario,
+    *,
+    expected_constraints: Sequence[str],
+    derived_conflict_class: MiddlewareConflictType,
+    failures: list[str],
+) -> None:
+    """Check the *contents* of the proved facts, not merely their kinds.
+
+    Previously the validator only asserted that at least one fact of each
+    required kind existed, so hand-built nonsense (unknown constraint ids, a
+    "contradictory" satisfiability fact under a stand-down, duplicate ids) passed
+    as a valid proof. This re-derives the constraint universe from the evaluated
+    runtime case and rejects facts that reference outside it, duplicate ids, and
+    obstruction claims that contradict the derived engine result.
+    """
+    facts = witness.proved_logical_facts
+
+    # Fact ids must be unique so the verdict's checked_fact_ids are meaningful.
+    seen: set[str] = set()
+    duplicates: set[str] = set()
+    for fact in facts:
+        if fact.fact_id in seen:
+            duplicates.add(fact.fact_id)
+        seen.add(fact.fact_id)
+    if duplicates:
+        failures.append(f"duplicate proved logical fact ids: {sorted(duplicates)}")
+
+    # Every referenced constraint id must resolve against the evaluated runtime
+    # case (its policy/request source ids) or the validator-derived expected set
+    # (which includes any synthetic ids the engine legitimately emits, e.g. the
+    # enclave's prompt_content pseudo-constraint).
+    runtime_case = scenario.runtime_case
+    valid_ids: set[str] = set(expected_constraints)
+    if runtime_case is not None:
+        valid_ids.update(c.id for c in runtime_case.policy_constraints)
+        valid_ids.update(c.id for c in runtime_case.request_constraints)
+    for fact in facts:
+        for constraint_id in fact.constraint_ids:
+            if constraint_id not in valid_ids:
+                failures.append(
+                    f"fact {fact.fact_id!r} references unknown constraint id {constraint_id!r}"
+                )
+
+    # Obstruction claims must agree with the derived result. On a stand-down
+    # (no conflict), a satisfiability fact cannot assert a contradiction or a
+    # nonzero obstruction count.
+    if derived_conflict_class == MiddlewareConflictType.NONE:
+        for fact in facts:
+            if fact.kind != LogicalFactKind.SATISFIABLE_SET:
+                continue
+            status = fact.details.get("status")
+            if status == CompatibilityStatus.CONTRADICTORY.value:
+                failures.append(
+                    f"stand-down fact {fact.fact_id!r} asserts contradictory status"
+                )
+            obstruction_count = fact.details.get("obstruction_count")
+            if obstruction_count not in (None, 0):
+                failures.append(
+                    f"stand-down fact {fact.fact_id!r} asserts obstruction_count="
+                    f"{obstruction_count} for a no-conflict result"
+                )
 
 
 def _fact_ids(facts: Iterable[ProvedLogicalFact]) -> list[str]:

@@ -127,7 +127,9 @@ Important boundary:
 
 - the validator only treats the deterministic facts as proof
 - semantic annotations are carried for audit and readability, not as proof claims
-- the current validator re-runs the deterministic runtime check for the supported scenario and checks that the witness claims match the runtime result
+- the validator re-runs the deterministic runtime check on the **exact runtime case bound to the witness** — the witness carries a canonical hash of that case plus an engine id, and validation runs against the supplied artifact rather than a fresh catalog lookup by scenario id
+- validation checks fact *contents*, not merely fact kinds: unique fact ids, referenced constraint ids that resolve against the evaluated case, obstruction claims consistent with the derived result, a pinned schema version, and an affirmative witness status
+- for a stand-down witness, "proved" means the supported detectors fired no obstruction through the configured order. It does **not** mean the constraint set was proved satisfiable — no satisfying assignment is constructed or checked. Affirmative satisfiability (a checked assignment, or a regex-language intersection check) is a v0.2 goal
 
 This is a flagship subset demo. It shows that a runtime witness can carry a machine-checkable proof object for a few narrow cases without pretending that all scenario semantics are now formally solved.
 

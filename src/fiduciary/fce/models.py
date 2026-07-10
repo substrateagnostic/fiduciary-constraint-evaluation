@@ -4,6 +4,9 @@ Typed models for the Fiduciary Constraint Evaluation (FCE) benchmark.
 
 from __future__ import annotations
 
+import hashlib
+import json
+import re
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
@@ -241,6 +244,14 @@ class ConversationTurn(BaseModel):
     content: str
 
 
+_REGEX_CONSTRAINT_TYPES = frozenset(
+    {
+        ConstraintType.MUST_INCLUDE_REGEX,
+        ConstraintType.MUST_NOT_INCLUDE_REGEX,
+    }
+)
+
+
 class RuntimeConstraintSpec(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -250,6 +261,27 @@ class RuntimeConstraintSpec(BaseModel):
     target: str
     severity: Severity = Severity.P1
     is_soul_invariant: bool = False
+
+    @model_validator(mode="after")
+    def _validate_regex_target(self) -> RuntimeConstraintSpec:
+        """Reject non-compiling regex targets at construction time.
+
+        A malformed policy or request regex must fail loudly here rather than
+        being silently swallowed by a downstream ``re.error`` handler and turned
+        into a stand-down. Callers that ingest untrusted constraints should catch
+        this ``ValueError`` and route the request to an explicit UNKNOWN/CLARIFY
+        path — never treat an uncompilable constraint as "no obstruction."
+        """
+        if self.constraint_type in _REGEX_CONSTRAINT_TYPES:
+            try:
+                re.compile(self.target)
+            except re.error as exc:
+                raise ValueError(
+                    f"RuntimeConstraintSpec {self.id!r} has a non-compiling "
+                    f"{self.constraint_type.value} target {self.target!r}: {exc}. "
+                    "Malformed regex constraints must fail explicitly, not stand down."
+                ) from exc
+        return self
 
     def to_normalized_constraint(self) -> NormalizedConstraint:
         return NormalizedConstraint(
@@ -282,6 +314,46 @@ class FCERuntimeCase(BaseModel):
         return ConstraintSet(
             constraints={c.to_normalized_constraint() for c in self.request_constraints}
         )
+
+    def canonical_hash(self) -> str:
+        """Deterministic sha256 over a canonical JSON form of this runtime case.
+
+        Binds a proof-carrying witness to the exact artifact that was evaluated.
+        Constraints are sorted by identity so logically-equal cases hash equally
+        regardless of authored list order; every field that changes the engine's
+        verdict (mode, prompt, max_order, escalate_soft, handoff, and each
+        constraint's type/polarity/target/severity/soul flag) is included.
+        """
+
+        def _constraint_key(spec: RuntimeConstraintSpec) -> list[Any]:
+            return [
+                spec.id,
+                spec.constraint_type.value,
+                spec.polarity.value,
+                spec.target,
+                spec.severity.value,
+                spec.is_soul_invariant,
+            ]
+
+        payload = {
+            "mode": self.mode.value,
+            "prompt": self.prompt,
+            "max_order": self.max_order,
+            "escalate_soft": self.escalate_soft,
+            "default_handoff_target": (
+                self.default_handoff_target.value
+                if self.default_handoff_target is not None
+                else None
+            ),
+            "policy_constraints": sorted(
+                (_constraint_key(c) for c in self.policy_constraints)
+            ),
+            "request_constraints": sorted(
+                (_constraint_key(c) for c in self.request_constraints)
+            ),
+        }
+        canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+        return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
     @model_validator(mode="after")
     def _validate_runtime_case(self) -> FCERuntimeCase:
@@ -430,6 +502,12 @@ class CoherentWitness(BaseModel):
     schema_version: str
     scenario_id: str
     runtime_mode: RuntimeEvaluationMode
+    # Canonical sha256 of the runtime case actually evaluated (see
+    # FCERuntimeCase.canonical_hash) plus the engine that produced the verdict.
+    # These bind the witness to a specific artifact so a proof cannot be
+    # validated against a different runtime case than the one that produced it.
+    engine_id: str
+    runtime_case_hash: str
     proved_logical_facts: List[ProvedLogicalFact] = Field(default_factory=list)
     semantic_annotations: List[SemanticAnnotation] = Field(default_factory=list)
     constraint_ids: List[str] = Field(default_factory=list)
