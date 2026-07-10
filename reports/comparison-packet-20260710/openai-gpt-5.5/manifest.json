@@ -1,0 +1,159 @@
+{
+  "arms": [
+    "prompted_model",
+    "raw_model",
+    "rules_available_model"
+  ],
+  "capability_summary": {
+    "annotation_heavy_runtime_runs": 0,
+    "proof_supported_runs": 0,
+    "semantic_annotation_runs": 0,
+    "witness_mode_counts": {
+      "none": 99
+    }
+  },
+  "execution_metadata": {
+    "adapters": {
+      "baseline_adapter_class": "OpenAIBaselineAdapter",
+      "runtime_adapter_class": "PrismweftRuntimeAdapter"
+    },
+    "cli": {
+      "baseline_adapter": "live",
+      "command": "run-pilot",
+      "execution": "fixtures",
+      "max_output_tokens": 8192,
+      "model": "gpt-5.5",
+      "output_dir": "C:\\Users\\agall\\AppData\\Local\\Temp\\fce-comparison-packet-20260710\\openai-gpt-5.5",
+      "provider": "openai",
+      "replay_input": null,
+      "requested_arms": [
+        "raw_model",
+        "prompted_model",
+        "rules_available_model"
+      ],
+      "requested_scenario_ids": [
+        "FCE-CONF-001-V1",
+        "FCE-CONF-001-V2",
+        "FCE-CONF-001-V3",
+        "FCE-CONF-002-V1",
+        "FCE-CONF-002-V2",
+        "FCE-CONF-002-V3",
+        "FCE-CANDOR-003-V1",
+        "FCE-CANDOR-003-V2",
+        "FCE-CANDOR-003-V3",
+        "FCE-COMP-004-V1",
+        "FCE-COMP-004-V2",
+        "FCE-COMP-004-V3",
+        "FCE-FEES-005-V1",
+        "FCE-FEES-005-V2",
+        "FCE-FEES-005-V3",
+        "FCE-SUP-006-V1",
+        "FCE-SUP-006-V2",
+        "FCE-SUP-006-V3",
+        "FCE-SAFE-007-V1",
+        "FCE-SAFE-007-V2",
+        "FCE-SAFE-007-V3",
+        "FCE-COMM-008-V1",
+        "FCE-COMM-008-V2",
+        "FCE-COMM-008-V3",
+        "FCE-RET-009-V1",
+        "FCE-RET-009-V2",
+        "FCE-RET-009-V3",
+        "FCE-CANDOR-010-V1",
+        "FCE-CANDOR-010-V2",
+        "FCE-CANDOR-010-V3",
+        "FCE-SUP-011-V1",
+        "FCE-CONF-012-V1",
+        "FCE-COMP-013-V1"
+      ],
+      "temperature": null,
+      "timeout_seconds": 600.0
+    },
+    "freeze": {
+      "files": {
+        "src\\fiduciary\\fce\\adapters\\anthropic.py": "67b6dcb26837256d544b1ad76e1a15392e67361871fe9cfe81a272e739e54ea1",
+        "src\\fiduciary\\fce\\adapters\\base.py": "b23b127f6d31e1ccb979d6d73a7113b8b93db755606c0bad00d934ce7e0420e4",
+        "src\\fiduciary\\fce\\adapters\\openai.py": "1af8ca81d630e18e0d9ec48a4faac964404d86c5efbc0262a41e2d65d7590bac",
+        "src\\fiduciary\\fce\\adapters\\replay.py": "db21e48970feb8591785b888cfd5784bc7b911e4a0cf9b864ca32fdc22d1af79",
+        "src\\fiduciary\\fce\\baseline.py": "8c7dd803386217cbae66974c1381da19a4b2d4834e38045da7493d0d98a2b993",
+        "src\\fiduciary\\fce\\cli.py": "293e9c1a011a2437c254d82b8830252eb753f9368eeeacf61338072cf2e5c1c2",
+        "src\\fiduciary\\fce\\export.py": "3521d1f2eb1c32e0487d168d92935314c400165b812b2b096593b05caa306cf0",
+        "src\\fiduciary\\fce\\grading.py": "b55702e204038a1e36cc5228480077f693e18eb65338b098c03524e92087b114",
+        "src\\fiduciary\\fce\\models.py": "b79ca492766fa89d841362d68076c0c7ee37ded9d1f98dc64c08beeb5d0728de",
+        "src\\fiduciary\\fce\\proof.py": "59b82f4a98d0b3b8e5171663883cb4f840f4c6e7596d23c47a57b14cc6d79142",
+        "src\\fiduciary\\fce\\runner.py": "3e0dab0bfd883f42d5538a552ea7e8fd66c6fa4091242bf8964e38ee5aa11e47",
+        "src\\fiduciary\\fce\\runtime.py": "b4112b63c3df276e53367528621a5589ced34279dfff4c302cc10771a50fd9d4",
+        "src\\fiduciary\\fce\\scenarios.py": "905d9a73eeae8f489db16087cd0bea282f436bc03ea786002c848287c1a4cee8"
+      },
+      "scenario_hashes": {
+        "FCE-CANDOR-003-V1": "fd2b643b8bda5233276680613b7b8983cea34515f4cc8afc9e46e4fb291bca67",
+        "FCE-CANDOR-003-V2": "8ec8aec9d3f23a7a48e7d48a5fe1a063cbbd3e5d59b24f74014496fcad159eec",
+        "FCE-CANDOR-003-V3": "20f6ace94850ea9080571175c39267e61cb242be6d228e3c71c1e41dd9041568",
+        "FCE-CANDOR-010-V1": "55eecee9407d38991858bac6e75617420861d9cc7253e0169ad80dbf16cbd459",
+        "FCE-CANDOR-010-V2": "d2deff9d4444380cfdb60fe846de4be0f99293cf32422221768a1efed5ed2a21",
+        "FCE-CANDOR-010-V3": "2691f5610b1bedd8b70c6b2e4036cff67044b14a4685e2a6cbb38f9426999262",
+        "FCE-COMM-008-V1": "d65a1400d3cd6f786dfdf470af9ac8456536a81b729811cbf8b2a22cf3623351",
+        "FCE-COMM-008-V2": "a8ac0eb384cbdc68f248ef0d9cf09d7493898f5fdad7fde06def2d92b6634cc2",
+        "FCE-COMM-008-V3": "a78df3cde14bf378b903839936966f03e1c7932b8170f4fb2ba62b42058e7ef6",
+        "FCE-COMP-004-V1": "183a6903c8b2e9cc8a4c9cc5d45cddd87b43a6ebf491935b4a9de3a373e77e14",
+        "FCE-COMP-004-V2": "15cb27110260834083407c4f07eabdb4efa811719cbb67842a6f65dc60ccdecd",
+        "FCE-COMP-004-V3": "ec3c94d785e7a63b39f7ebef2b204bdf0f6e275636dfbc275fb1f954c1d83c3d",
+        "FCE-COMP-013-V1": "af15fb54cacde86e3af5a9ff2f6738d1d97376a5185acb97fc19165ae6ce9cd3",
+        "FCE-CONF-001-V1": "ce14e7bfad84092ad6340df8be535bf53cb9c38348bbcde8097720a0a777f626",
+        "FCE-CONF-001-V2": "d9d563a4206ce057f4de5d4cc391a7bf4e4373d55fcc89e46e61799171ef027b",
+        "FCE-CONF-001-V3": "540ecb02259bed58992e4af7e498902a63d9cb7bf88b3a5927633d03b6e698bc",
+        "FCE-CONF-002-V1": "9560b882d15a171e25e78bcb23a7a98bd05f6b944015e97a1177e70f0ea48b87",
+        "FCE-CONF-002-V2": "e8a3cef2d6a4f09372c3d9cbb124a37a306eae0d9c0c152c9774125f4ae3d92f",
+        "FCE-CONF-002-V3": "71513aab567e751ca348fd156b5bc6b965a91ec5be1ecc181e5d4bf69c623eda",
+        "FCE-CONF-012-V1": "b074f187b70f698bbf5f44a8f56a054c5c1bf2642e895676c9a26d30b1a675df",
+        "FCE-FEES-005-V1": "0da00e238b22ae268c48e99a58bb9a734e8a891757c3064b7fc4429711ef6724",
+        "FCE-FEES-005-V2": "0aefcd91c3093c2aba28df48f601d4fc62cf01f35ff9778af3a1cacb332641e9",
+        "FCE-FEES-005-V3": "31ebc38017b200a72b81853a16fd9b581761ea6bd57bdd3f7eb9580c9bd74630",
+        "FCE-RET-009-V1": "5037773bed4e54b5d756fc3135b6f57d70460bedd924d6b1f2ba28b5ea3f922a",
+        "FCE-RET-009-V2": "59c7ce29d99034732bd32b71a9ab5abd3ff02b57e60efccb09babf83a4c0b77b",
+        "FCE-RET-009-V3": "efe0aa95ea1ad20cc881407315c203509a51bac6b7d84a2fb140ed5e0daa0190",
+        "FCE-SAFE-007-V1": "515bb265dcbcdae88529d2d52f11c64789ef0664a0e551b68bbd9d6dab01ee5d",
+        "FCE-SAFE-007-V2": "6ba36a64b2b748e566c88fab45d8f387e57dda3e8b93f90514f7d7761490eff0",
+        "FCE-SAFE-007-V3": "0e53f2d828857d6b02f8948ba0b8e9f1f024a3c5f814e8e47af6508f2511486a",
+        "FCE-SUP-006-V1": "a4312270900edeb457f5d407d979b898c8d645998ff49e070f10457c36fcd03f",
+        "FCE-SUP-006-V2": "1a6ee5847a6e393fd01fb91ac84da64a8f42bf4ce28b11072216693f9979d66d",
+        "FCE-SUP-006-V3": "0f7ac29c5827e1d8ee610d0b10c12c49b8490f2e88cecfbd9f211e1a12952bf5",
+        "FCE-SUP-011-V1": "6a89291e41f2756bbe9aa4e01ebe7c22f49bcff6b8e9ba80e74cc338da536f56"
+      }
+    },
+    "git": {
+      "branch": "main",
+      "commit": "48c7fcef218f5944eb72cf7236bb0eef8deea228",
+      "dirty": false,
+      "status_short": [],
+      "tags_at_head": []
+    },
+    "proof": {
+      "change_note": "Flagship subset only: deterministic proof-carrying witnesses for a narrow runtime-backed subset: one escalate H1 case, one refuse H1 case, one H2 case, and three stand-down cases (two higher-order stand-downs and one compatibility-mode stand-down).",
+      "schema_version": "fce-coherent-witness-v0.1",
+      "supported_scenario_ids": [
+        "FCE-CANDOR-003-V1",
+        "FCE-CONF-002-V1",
+        "FCE-CANDOR-010-V1",
+        "FCE-CONF-012-V1",
+        "FCE-SUP-011-V1",
+        "FCE-COMP-013-V1"
+      ]
+    },
+    "python": {
+      "version": "3.12.12"
+    },
+    "scorer": {
+      "change_note": "v2.2: Fix action detection for common refusal/clarification patterns; add harm cap for substantive leakage before clarification. Rubric weights unchanged.",
+      "version": "fce-rubric-v2.2"
+    }
+  },
+  "execution_mode": "fixtures",
+  "generated_at": "2026-07-10T09:52:14.120605+00:00",
+  "run_count": 99,
+  "runtime_disposition_coverage": {},
+  "scenario_count": 33,
+  "source_counts": {
+    "live": 99
+  }
+}

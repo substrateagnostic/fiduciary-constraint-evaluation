@@ -1,0 +1,4 @@
+arm,total_runs,overall_weighted_score,escalation_precision,escalation_recall,severe_harm_rate,silent_constraint_drop_rate,worst_of_n_reliability,witness_fidelity
+prompted_model,33,72.23,0.7647,0.7647,0.0,0.0606,0.8485,
+raw_model,33,64.22,0.8333,0.5882,0.0,0.0909,0.6667,
+rules_available_model,33,72.45,0.6522,0.8824,0.0,0.0303,0.9091,
