@@ -172,6 +172,93 @@ def test_anthropic_adapter_normalizes_message_payload(monkeypatch):
     assert "supervising counsel" in result.response_text
 
 
+def test_anthropic_adapter_records_thinking_only_truncation_as_data(monkeypatch):
+    """max_tokens consumed by always-on thinking must not crash the run.
+
+    claude-fable-5 has thinking always on; max_tokens caps total output
+    including thinking tokens. A small budget yields thinking blocks and no
+    text block with stop_reason "max_tokens". The adapter records an empty
+    completion and surfaces stop_reason instead of raising.
+    """
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
+
+    def transport(*, url, headers, payload, timeout_seconds):
+        assert "temperature" not in payload
+        return HTTPJSONResponse(
+            payload={
+                "id": "msg_trunc_1",
+                "stop_reason": "max_tokens",
+                "content": [{"type": "thinking", "thinking": ""}],
+            }
+        )
+
+    scenario = get_pilot_scenario("FCE-CONF-001-V1")
+    request = build_baseline_request(scenario, EvaluationArm.RAW_MODEL)
+    adapter = AnthropicBaselineAdapter(model="claude-fable-5", transport=transport)
+
+    result = adapter.invoke(request)
+    normalized = normalize_baseline_result(request, result)
+
+    assert result.response_text == ""
+    assert result.raw_payload["stop_reason"] == "max_tokens"
+    assert normalized.outcome.response_text == ""
+
+
+def test_anthropic_adapter_records_refusal_stop_details(monkeypatch):
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
+
+    def transport(*, url, headers, payload, timeout_seconds):
+        return HTTPJSONResponse(
+            payload={
+                "id": "msg_refusal_1",
+                "stop_reason": "refusal",
+                "stop_details": {"type": "refusal", "category": "cyber"},
+                "content": [],
+            }
+        )
+
+    scenario = get_pilot_scenario("FCE-CONF-001-V1")
+    request = build_baseline_request(scenario, EvaluationArm.RAW_MODEL)
+    adapter = AnthropicBaselineAdapter(model="claude-fable-5", transport=transport)
+
+    result = adapter.invoke(request)
+
+    assert result.response_text == ""
+    assert result.raw_payload["stop_reason"] == "refusal"
+    assert result.raw_payload["stop_details_category"] == "cyber"
+
+
+def test_openai_adapter_gpt5_payload_and_null_content_tolerance(monkeypatch):
+    """GPT-5 family: max_completion_tokens, no temperature, null-content tolerance."""
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+
+    def transport(*, url, headers, payload, timeout_seconds):
+        assert payload["model"] == "gpt-5.5"
+        assert "max_completion_tokens" in payload
+        assert "max_tokens" not in payload
+        assert "temperature" not in payload
+        return HTTPJSONResponse(
+            payload={
+                "id": "chatcmpl_trunc_1",
+                "choices": [
+                    {
+                        "finish_reason": "length",
+                        "message": {"role": "assistant", "content": None},
+                    }
+                ],
+            }
+        )
+
+    scenario = get_pilot_scenario("FCE-COMP-004-V1")
+    request = build_baseline_request(scenario, EvaluationArm.RAW_MODEL)
+    adapter = OpenAIBaselineAdapter(model="gpt-5.5", transport=transport)
+
+    result = adapter.invoke(request)
+
+    assert result.response_text == ""
+    assert result.raw_payload["stop_reason"] == "length"
+
+
 def test_replay_run_writes_manifest_jsonl(tmp_path):
     scenario = get_pilot_scenario("FCE-COMP-004-V1")
     adapter = ReplayBaselineAdapter(

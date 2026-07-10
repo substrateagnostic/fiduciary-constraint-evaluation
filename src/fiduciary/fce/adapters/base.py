@@ -337,8 +337,17 @@ class LiveBaselineAdapter(ABC):
                 "response_headers": response.headers,
                 "scenario_id": request.scenario.scenario_id,
                 "arm": request.arm.value,
+                **self.extract_response_metadata(response.payload),
             },
         )
+
+    def extract_response_metadata(self, payload: Mapping[str, Any]) -> Dict[str, Any]:
+        """Provider-specific stop metadata surfaced at the top of raw_payload.
+
+        Used to make truncations and refusals countable without digging into the
+        provider response body. Default: no extra fields.
+        """
+        return {}
 
     @abstractmethod
     def build_headers(self, api_key: str) -> Dict[str, str]:

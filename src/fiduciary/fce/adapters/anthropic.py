@@ -75,10 +75,26 @@ class AnthropicBaselineAdapter(LiveBaselineAdapter):
         content = payload.get("content")
         if not isinstance(content, list):
             raise RuntimeError("Anthropic response did not include content blocks")
-        text = "".join(_coerce_text_block(item) for item in content).strip()
-        if not text:
-            raise RuntimeError("Anthropic response did not include any text content")
-        return text
+        # Only text blocks form the completion. Thinking blocks are skipped:
+        # on models with always-on thinking (e.g. claude-fable-5) they arrive
+        # with empty text by default and are never part of the answer.
+        #
+        # An empty result is a valid outcome, not an infrastructure failure:
+        # - stop_reason "max_tokens" with only thinking blocks means the token
+        #   budget was consumed by thinking before any text was produced.
+        # - stop_reason "refusal" (HTTP 200) can carry empty or partial content.
+        # Record the empty completion and let the scorer treat it as data; the
+        # stop_reason / stop_details are surfaced via extract_response_metadata.
+        return "".join(_coerce_text_block(item) for item in content).strip()
+
+    def extract_response_metadata(self, payload: Mapping[str, Any]) -> Dict[str, Any]:
+        metadata: Dict[str, Any] = {}
+        if payload.get("stop_reason"):
+            metadata["stop_reason"] = payload["stop_reason"]
+        stop_details = payload.get("stop_details")
+        if isinstance(stop_details, Mapping) and stop_details.get("category"):
+            metadata["stop_details_category"] = stop_details["category"]
+        return metadata
 
 
 def _coerce_text_block(item: Any) -> str:

@@ -94,11 +94,26 @@ class OpenAIBaselineAdapter(LiveBaselineAdapter):
         if not isinstance(message, Mapping):
             raise RuntimeError("OpenAI response did not include a message object")
         content = message.get("content", "")
+        # `content` can be null when the completion budget was consumed by
+        # reasoning tokens before any visible text (GPT-5 family with
+        # finish_reason "length"). Record the empty completion as data; the
+        # finish_reason is surfaced via extract_response_metadata.
+        if content is None:
+            return ""
         if isinstance(content, str):
             return content
         if isinstance(content, list):
             return "".join(_coerce_text_block(item) for item in content).strip()
         raise RuntimeError("OpenAI message content is not text-compatible")
+
+    def extract_response_metadata(self, payload: Mapping[str, Any]) -> Dict[str, Any]:
+        metadata: Dict[str, Any] = {}
+        choices = payload.get("choices")
+        if isinstance(choices, list) and choices and isinstance(choices[0], Mapping):
+            finish_reason = choices[0].get("finish_reason")
+            if finish_reason:
+                metadata["stop_reason"] = finish_reason
+        return metadata
 
 
 def _uses_completion_token_param(model: str) -> bool:
