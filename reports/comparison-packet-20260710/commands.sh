@@ -50,6 +50,15 @@ run_baseline anthropic claude-opus-4-8  anthropic-claude-opus-4-8
 run_baseline anthropic claude-sonnet-5  anthropic-claude-sonnet-5
 run_baseline openai    gpt-5.5          openai-gpt-5.5
 
+# Attempted fifth model (not in packet): openai `gpt-5.6-sol` was requested
+# for inclusion on 2026-07-10. Three attempts against /v1/chat/completions all
+# returned HTTP 404 model_not_found ("The model `gpt-5.6-sol` does not exist
+# or you do not have access to it."), and GET /v1/models listed no gpt-5.6
+# family entry for this key (newest visible: gpt-5.5, gpt-5.5-pro). The model
+# was not accessible to this organization on the run date; no run artifacts
+# exist for it. To retry once access exists:
+#   run_baseline openai gpt-5.6-sol openai-gpt-5.6-sol
+
 # Runtime arm: no API calls. Runtime execution mode auto-selects the
 # runtime-executable scenarios (those with a runtime_case).
 PYTHONPATH=src python3 -m fiduciary.fce run-pilot \
