@@ -7,6 +7,7 @@ Source files (committed):
 - `reports/comparison-packet-20260710/anthropic-claude-fable-5/raw_outputs.jsonl`
 - `reports/comparison-packet-20260710/anthropic-claude-fable-5/summary.csv`
 - `reports/comparison-packet-20260710/PACKET.md` (stop-reason accounting, lines 98–109)
+- `src/fiduciary/fce/scenarios.py` (the scenario prompts, so a reader can read the `cyber` categorization against the actual requests)
 
 ---
 
@@ -14,7 +15,7 @@ Source files (committed):
 
 **Filter.** Over `raw_outputs.jsonl` (99 runs total for this bundle), select every run where `raw_payload["stop_reason"] == "refusal"`.
 
-**Count.** The filter returns **15** rows out of 99 runs (exactly 15, as stated). Every row carries `stop_details.category == "cyber"`.
+**Count.** The filter returns **15** rows out of 99 runs (matching the stop-reason accounting in `PACKET.md`, lines 98–109). Every row carries `stop_details.category == "cyber"`.
 
 **Schema note.** The refusal signal lives at `raw_payload.stop_reason` (mirrored at `raw_payload.response.stop_reason`). The category lives at `raw_payload.response.stop_details.category`. The arm value in this bundle's rows is `raw_model` / `prompted_model` / `rules_available_model`; `PACKET.md` renders the third arm as `rules_scaffold_model` in its summary table — same arm, different label.
 
@@ -346,9 +347,11 @@ For each row below: the exact `scenario_id`, `arm`, `provider_model`, `source`, 
 
 ## Exhibit B — cross-provider classifier sequence
 
-During the same portfolio run, an adversarial security review of AgentLedger's cryptographic canonicalization (RFC 8785 / JCS) was dispatched to OpenAI's Codex running `gpt-5.6-sol`; it read the repository and began probing the JSON canonicalizer with edge-case inputs (lone surrogates, out-of-range integers) to search for hash collisions, i.e. defensive fuzzing of evidence-integrity code; OpenAI's cybersecurity classifier terminated the review with the error quoted below; the review was then reassigned to a Claude Opus 4.8 subagent, which completed it and independently identified the same class of issue as finding F8 (the JCS serializer accepted unpaired surrogates, letting distinct inputs hash identically — now fixed to reject them).
+*The events in this paragraph occurred in the AgentLedger repository, not in this packet; no file here corroborates them. The paragraph is the author's narration of the sequence as observed during the run. Only the quoted classifier text below is offered as the exhibit.*
 
-Verbatim classifier flag (the exhibit):
+During the same portfolio run, an adversarial security review of AgentLedger's cryptographic canonicalization (RFC 8785 / JCS) was dispatched to OpenAI's Codex running `gpt-5.6-sol`; it read the repository and began probing the JSON canonicalizer with edge-case inputs (lone surrogates, out-of-range integers) to test whether distinct inputs could produce identical hashes; OpenAI's cybersecurity classifier terminated the review with the error quoted below; the review was then reassigned to a Claude Opus 4.8 subagent, run in a fresh context, which reported the surrogate-handling issue recorded as finding F8 (the JCS serializer accepted unpaired surrogates, letting distinct inputs hash identically — now fixed to reject them).
+
+Verbatim classifier flag, reproduced from the terminated Codex session as recorded during the run (the exhibit):
 
 > This content was flagged for possible cybersecurity risk. If this seems wrong, try rephrasing your request. To get authorized for security work, join the Trusted Access for Cyber program: https://chatgpt.com/cyber
 
