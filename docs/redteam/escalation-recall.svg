@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Escalation recall by prompting arm.
+  Source: reports/comparison-packet-20260710/<bundle>/summary.csv
+          field 'escalation_recall'; cross-checked vs PACKET.md table (lines 80-92).
+  Values (raw_model / prompted_model / rules_scaffold_model[=rules_available_model in CSV]):
+    claude-fable-5  : 0.5882 / 0.7647 / 0.8824
+    claude-opus-4-8 : 0.3529 / 0.5294 / 0.9412
+    claude-sonnet-5 : 0.3529 / 0.5882 / 0.9412
+    gpt-5.5         : 0.4118 / 0.5882 / 0.9412
+    prismweft-runtime (reference, 17-scenario subset): 1.0000
+  Live-model arms: n=33 scenarios each. Runtime reference: n=17 subset.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="560" viewBox="0 0 900 560" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif">
+  <rect x="0" y="0" width="900" height="560" fill="#fcfcfb"/>
+  <text x="78" y="34" font-size="20" font-weight="700" fill="#0b0b0b">Escalation recall by prompting arm</text>
+  <text x="78" y="56" font-size="12.5" fill="#52514e">Source: comparison-packet-20260710 summary.csv &#183; live-model arms n=33 &#183; prismweft-runtime reference n=17 subset</text>
+  <line x1="78" y1="428.0" x2="870" y2="428.0" stroke="#e1e0d9" stroke-width="1"/>
+  <text x="68" y="432.0" font-size="11" fill="#898781" text-anchor="end" font-variant-numeric="tabular-nums">0.00</text>
+  <line x1="78" y1="343.0" x2="870" y2="343.0" stroke="#e1e0d9" stroke-width="1"/>
+  <text x="68" y="347.0" font-size="11" fill="#898781" text-anchor="end" font-variant-numeric="tabular-nums">0.25</text>
+  <line x1="78" y1="258.0" x2="870" y2="258.0" stroke="#e1e0d9" stroke-width="1"/>
+  <text x="68" y="262.0" font-size="11" fill="#898781" text-anchor="end" font-variant-numeric="tabular-nums">0.50</text>
+  <line x1="78" y1="173.0" x2="870" y2="173.0" stroke="#e1e0d9" stroke-width="1"/>
+  <text x="68" y="177.0" font-size="11" fill="#898781" text-anchor="end" font-variant-numeric="tabular-nums">0.75</text>
+  <line x1="78" y1="88.0" x2="870" y2="88.0" stroke="#e1e0d9" stroke-width="1"/>
+  <text x="68" y="92.0" font-size="11" fill="#898781" text-anchor="end" font-variant-numeric="tabular-nums">1.00</text>
+  <line x1="78" y1="428" x2="870" y2="428" stroke="#c3c2b7" stroke-width="2"/>
+  <text x="20" y="258.0" font-size="12.5" fill="#52514e" text-anchor="middle" transform="rotate(-90 20 258.0)">Escalation recall (0&#8211;1)</text>
+  <rect x="132.0" y="228.0" width="34" height="200.0" rx="4" ry="4" fill="#86b6ef"/>
+  <rect x="132.0" y="328.0" width="34" height="100.0" fill="#86b6ef"/>
+  <text x="149.0" y="222.0" font-size="9.5" fill="#0b0b0b" text-anchor="middle" font-variant-numeric="tabular-nums">0.5882</text>
+  <rect x="172.0" y="168.0" width="34" height="260.0" rx="4" ry="4" fill="#3987e5"/>
+  <rect x="172.0" y="298.0" width="34" height="130.0" fill="#3987e5"/>
+  <text x="189.0" y="162.0" font-size="9.5" fill="#0b0b0b" text-anchor="middle" font-variant-numeric="tabular-nums">0.7647</text>
+  <rect x="212.0" y="128.0" width="34" height="300.0" rx="4" ry="4" fill="#184f95"/>
+  <rect x="212.0" y="278.0" width="34" height="150.0" fill="#184f95"/>
+  <text x="229.0" y="122.0" font-size="9.5" fill="#0b0b0b" text-anchor="middle" font-variant-numeric="tabular-nums">0.8824</text>
+  <rect x="288.0" y="308.0" width="34" height="120.0" rx="4" ry="4" fill="#86b6ef"/>
+  <rect x="288.0" y="368.0" width="34" height="60.0" fill="#86b6ef"/>
+  <text x="305.0" y="302.0" font-size="9.5" fill="#0b0b0b" text-anchor="middle" font-variant-numeric="tabular-nums">0.3529</text>
+  <rect x="328.0" y="248.0" width="34" height="180.0" rx="4" ry="4" fill="#3987e5"/>
+  <rect x="328.0" y="338.0" width="34" height="90.0" fill="#3987e5"/>
+  <text x="345.0" y="242.0" font-size="9.5" fill="#0b0b0b" text-anchor="middle" font-variant-numeric="tabular-nums">0.5294</text>
+  <rect x="368.0" y="108.0" width="34" height="320.0" rx="4" ry="4" fill="#184f95"/>
+  <rect x="368.0" y="268.0" width="34" height="160.0" fill="#184f95"/>
+  <text x="385.0" y="102.0" font-size="9.5" fill="#0b0b0b" text-anchor="middle" font-variant-numeric="tabular-nums">0.9412</text>
+  <rect x="444.0" y="308.0" width="34" height="120.0" rx="4" ry="4" fill="#86b6ef"/>
+  <rect x="444.0" y="368.0" width="34" height="60.0" fill="#86b6ef"/>
+  <text x="461.0" y="302.0" font-size="9.5" fill="#0b0b0b" text-anchor="middle" font-variant-numeric="tabular-nums">0.3529</text>
+  <rect x="484.0" y="228.0" width="34" height="200.0" rx="4" ry="4" fill="#3987e5"/>
+  <rect x="484.0" y="328.0" width="34" height="100.0" fill="#3987e5"/>
+  <text x="501.0" y="222.0" font-size="9.5" fill="#0b0b0b" text-anchor="middle" font-variant-numeric="tabular-nums">0.5882</text>
+  <rect x="524.0" y="108.0" width="34" height="320.0" rx="4" ry="4" fill="#184f95"/>
+  <rect x="524.0" y="268.0" width="34" height="160.0" fill="#184f95"/>
+  <text x="541.0" y="102.0" font-size="9.5" fill="#0b0b0b" text-anchor="middle" font-variant-numeric="tabular-nums">0.9412</text>
+  <rect x="600.0" y="288.0" width="34" height="140.0" rx="4" ry="4" fill="#86b6ef"/>
+  <rect x="600.0" y="358.0" width="34" height="70.0" fill="#86b6ef"/>
+  <text x="617.0" y="282.0" font-size="9.5" fill="#0b0b0b" text-anchor="middle" font-variant-numeric="tabular-nums">0.4118</text>
+  <rect x="640.0" y="228.0" width="34" height="200.0" rx="4" ry="4" fill="#3987e5"/>
+  <rect x="640.0" y="328.0" width="34" height="100.0" fill="#3987e5"/>
+  <text x="657.0" y="222.0" font-size="9.5" fill="#0b0b0b" text-anchor="middle" font-variant-numeric="tabular-nums">0.5882</text>
+  <rect x="680.0" y="108.0" width="34" height="320.0" rx="4" ry="4" fill="#184f95"/>
+  <rect x="680.0" y="268.0" width="34" height="160.0" fill="#184f95"/>
+  <text x="697.0" y="102.0" font-size="9.5" fill="#0b0b0b" text-anchor="middle" font-variant-numeric="tabular-nums">0.9412</text>
+  <line x1="743.0" y1="82" x2="743.0" y2="428" stroke="#e1e0d9" stroke-width="1" stroke-dasharray="3 3"/>
+  <rect x="772.0" y="88.0" width="44" height="340.0" rx="4" ry="4" fill="#1baf7a"/>
+  <rect x="772.0" y="258.0" width="44" height="170.0" fill="#1baf7a"/>
+  <text x="794.0" y="82.0" font-size="9.5" fill="#0b0b0b" text-anchor="middle" font-variant-numeric="tabular-nums">1.0000</text>
+  <text x="189.0" y="448" font-size="12" font-weight="600" fill="#0b0b0b" text-anchor="middle">claude-fable-5</text>
+  <text x="345.0" y="448" font-size="12" font-weight="600" fill="#0b0b0b" text-anchor="middle">claude-opus-4-8</text>
+  <text x="501.0" y="448" font-size="12" font-weight="600" fill="#0b0b0b" text-anchor="middle">claude-sonnet-5</text>
+  <text x="657.0" y="448" font-size="12" font-weight="600" fill="#0b0b0b" text-anchor="middle">gpt-5.5</text>
+  <text x="794.0" y="448" font-size="11.5" font-weight="600" fill="#0b0b0b" text-anchor="middle">prismweft-runtime</text>
+  <text x="794.0" y="463" font-size="9.5" fill="#898781" text-anchor="middle">reference (n=17)</text>
+  <rect x="78" y="516" width="13" height="13" rx="2" fill="#86b6ef"/>
+  <text x="97" y="527" font-size="11.5" fill="#52514e">raw_model</text>
+  <rect x="204" y="516" width="13" height="13" rx="2" fill="#3987e5"/>
+  <text x="223" y="527" font-size="11.5" fill="#52514e">prompted_model</text>
+  <rect x="375" y="516" width="13" height="13" rx="2" fill="#184f95"/>
+  <text x="394" y="527" font-size="11.5" fill="#52514e">rules_scaffold_model</text>
+  <rect x="600" y="516" width="13" height="13" rx="2" fill="#1baf7a"/>
+  <text x="619" y="527" font-size="11.5" fill="#52514e">prismweft-runtime (reference)</text>
+</svg>
