@@ -168,4 +168,9 @@ This repository is for research and evaluation only. It is not legal advice, doe
 
 ## License
 
-No open-source license has been selected yet. All rights reserved unless and until a license is added.
+Licensed under the Apache License, Version 2.0. See [LICENSE](./LICENSE).
+
+Apache-2.0 was chosen deliberately for its explicit patent grant: this is
+standards-adjacent code, and the patent grant matters for organizations that
+implement against it. The Agent Evidence Record spec is CC BY 4.0; gatehouse
+(the AER proxy that consumes this runtime) is also Apache-2.0.
