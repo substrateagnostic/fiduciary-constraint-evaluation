@@ -1,0 +1,4 @@
+# Scoped to the validation packet: keep these documents UTF-8 / LF in both the
+# repository and the working tree, per the study's house conventions.
+*.md text eol=lf
+.gitattributes text eol=lf
