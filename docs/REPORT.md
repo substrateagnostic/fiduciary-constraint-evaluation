@@ -15,8 +15,9 @@ study and reports no significance claims.
 FCE tests a narrow workflow problem: a model may state a fiduciary or professional
 constraint correctly, then fail to keep that constraint live when the user reframes the
 task, adds urgency, introduces ambiguity, or asks for a locally convenient but globally
-invalid action. The current pilot is 33 hand-authored short multi-turn scenarios across
-nine professional-duty domains. Each scenario carries a required disposition (escalate,
+invalid action. The current pilot is 33 short multi-turn scenarios across nine
+professional-duty domains. The scenario texts were drafted by GPT-5.6-Sol to my
+specification; the required dispositions and scoring criteria are mine. Each scenario carries a required disposition (escalate,
 refuse, clarify, or correct-continue), hidden constraints, must-not behaviors, and rubric
 data. Responses are scored by a transparent heuristic scorer (`fce-rubric-v2.2`) inside the
 evaluator v3.1 infrastructure. A subset of 17 scenarios additionally carries a runtime
@@ -272,8 +273,8 @@ This repository should be read with the limitations first:
 
 ## References
 
-- Galle-From, A. (2026). "The Authentication Cliff: Agentic AI and Fiduciary Erosion."
-  https://alexgallefrom.io/thesis
+- Galle-From, A. (2026). "Verification Without Surveillance."
+  https://www.alexgallefrom.io/writing/verification-without-surveillance
 - `reports/comparison-packet-20260710/PACKET.md` — the 2026-07-10 live comparison packet.
 - `docs/FCE_METHODS.md`, `docs/fce_spec.md` — method and specification detail.
 - `docs/redteam/2026-07-10-gpt-5.6-sol-review.md`, `docs/redteam/2026-07-10-response.md` —

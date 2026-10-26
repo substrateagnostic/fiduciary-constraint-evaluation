@@ -141,7 +141,9 @@ model list and caveats.
 - Runtime coverage is subset-specific.
 - Proof-supported cases are narrow deterministic examples.
 - Fixture-backed runs demonstrate package mechanics and report generation, not model capability.
-- Scenario coverage is hand-authored and jurisdiction-general; it is not comprehensive.
+- Scenario texts were drafted by GPT-5.6-Sol to the maintainer's specification; required
+  dispositions and scoring criteria are the maintainer's. Coverage is jurisdiction-general
+  and not comprehensive.
 
 ## Status And Roadmap
 
