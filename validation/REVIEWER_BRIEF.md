@@ -25,8 +25,10 @@ scored against that scenario's expected behavior by an automated, keyword-based 
 recognition, constraint persistence, action correctness, harm avoidance, and explanation
 quality.
 
-FCE is a jurisdiction-general, ABA-Model-Rules-style pilot of 33 hand-authored scenarios. It
-is explicitly **not** a validated benchmark, not legal advice, not a provider ranking, and
+FCE is a jurisdiction-general, ABA-Model-Rules-style pilot of 33 scenarios. The scenario
+texts were drafted by GPT-5.6-Sol to the maintainer's specification; the required
+dispositions and scoring criteria are the maintainer's. It is explicitly **not** a validated
+benchmark, not legal advice, not a provider ranking, and
 not a claim that any model is "aligned." The scope of this study is equally narrow.
 
 ## 2. Why independent validation is needed (stated plainly)
@@ -34,8 +36,9 @@ not a claim that any model is "aligned." The scope of this study is equally narr
 The automated scorer is a transparent keyword/rubric heuristic, not a legal expert. The
 project ran an internal manual check of the scorer against a fresh set of model responses
 and the scorer **failed**: on a 24-item audit it was directionally correct on only **14 of
-24** items (58%), and it did not clear the project's own pre-set "stop gate" for treating
-the scores as usable. As a result the project has **closed its empirical lane**: it
+24** items (58%), and it did not clear the project's own "stop gate" for treating
+the scores as usable (a gate the scorer then failed; its thresholds are first documented in
+the file that reports the result, so they are not claimed as pre-set). As a result the project has **closed its empirical lane**: it
 currently publishes all FCE scores as "unvalidated instrument readings" and makes no
 accuracy or ranking claims from them. (Source: `reports/comparison-packet-20260710/PACKET.md`.)
 

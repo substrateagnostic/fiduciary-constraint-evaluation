@@ -23,7 +23,8 @@ model response to one scenario ("item"). Confirmatory analyses are listed in §6
 exploratory.
 
 **Prior result being tested against.** An earlier internal audit found the scorer
-directionally correct on 14 of 24 items (58%) and failing its pre-set stop gate; the project's
+directionally correct on 14 of 24 items (58%) and failing its stop gate (thresholds first
+documented in the file that reports the result, so not claimed as pre-set); the project's
 empirical lane is currently closed and all FCE scores are published as unvalidated instrument
 readings (`reports/comparison-packet-20260710/PACKET.md`). This study is the independent check
 that could reopen — or confirm the closure of — that lane.

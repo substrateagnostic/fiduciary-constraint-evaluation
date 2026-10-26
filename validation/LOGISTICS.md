@@ -123,9 +123,9 @@ separate.
 
 ## 6. Data handling
 
-- **No client data is involved.** All scenarios are hand-authored fiction; blinded items
-  contain no real PII or privileged material. This keeps the study clear of confidentiality
-  exposure on the *content* side.
+- **No client data is involved.** All scenarios are fiction, drafted by GPT-5.6-Sol to the
+  maintainer's specification; blinded items contain no real PII or privileged material. This
+  keeps the study clear of confidentiality exposure on the *content* side.
 - **Master key security.** The item→(model, arm, score, labels) key stays with the methods
   reviewer and is not opened until labels are locked. Locked label files are hashed to prevent
   post-hoc edits.
